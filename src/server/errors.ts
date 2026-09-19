@@ -5,6 +5,7 @@ import '@tanstack/react-start/server-only'
    Each code maps to a message the user can act on. */
 export const ERROR_CODES = [
   'VALIDATION_FAILED',
+  'UNAUTHENTICATED',
   'NOT_FOUND',
   'DB_UNAVAILABLE',
   'CONFLICT',
@@ -55,6 +56,7 @@ export class AppError extends Error {
 
 const STATUS_BY_CODE: Record<ErrorCode, number> = {
   VALIDATION_FAILED: 400,
+  UNAUTHENTICATED: 401,
   NOT_FOUND: 404,
   CONFLICT: 409,
   DB_UNAVAILABLE: 503,
@@ -65,6 +67,7 @@ const STATUS_BY_CODE: Record<ErrorCode, number> = {
    it, and what the user can do next -- in that order. */
 const SAFE_MESSAGE: Record<ErrorCode, string> = {
   VALIDATION_FAILED: 'That change was not valid. Nothing was saved.',
+  UNAUTHENTICATED: 'Sign in to continue.',
   NOT_FOUND: 'That task no longer exists. It may have been deleted.',
   CONFLICT: 'That change conflicts with the current state. Nothing was saved.',
   DB_UNAVAILABLE:

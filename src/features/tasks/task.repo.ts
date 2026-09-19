@@ -8,6 +8,7 @@ import type { ListId, Priority, Task, TaskStatus } from './task.types'
    as Date so Mongo can compare and index them, and the id is an ObjectId.
    Neither of those may reach a component (Failure Check 5). */
 export interface TaskDoc extends Document {
+  ownerId: ObjectId
   title: string
   notes: string | null
   status: TaskStatus
@@ -77,10 +78,11 @@ export function ensureIndexes(): Promise<void> {
   indexesReady ??= (async () => {
     const col = await tasks()
     await col.createIndexes([
-      // The default list order: newest first.
-      { key: { createdAt: -1 }, name: 'createdAt_desc' },
-      // Supports status filtering and the board's per-column queries.
-      { key: { status: 1, dueAt: 1 }, name: 'status_dueAt' },
+      /* Every read is owner-scoped, so ownerId leads every compound index.
+         An index that starts with createdAt would make the server sort the
+         whole collection and then discard other people's rows. */
+      { key: { ownerId: 1, createdAt: -1 }, name: 'owner_createdAt' },
+      { key: { ownerId: 1, status: 1, dueAt: 1 }, name: 'owner_status_dueAt' },
       // Text search over the fields the design says search matches.
       { key: { title: 'text', notes: 'text' }, name: 'title_notes_text' },
     ])
@@ -99,4 +101,31 @@ export function ensureIndexes(): Promise<void> {
     throw error
   })
   return indexesReady
+}
+
+/**
+ * Moves every task from one owner to another, for adopting a guest's work on
+ * sign-in. Returns how many moved.
+ *
+ * Guarded on the source owner, so it can only ever move tasks that the guest
+ * being abandoned actually owned.
+ */
+export async function reassignOwner(
+  from: ObjectId,
+  to: ObjectId,
+): Promise<number> {
+  const col = await tasks()
+  const { modifiedCount } = await col.updateMany(
+    { ownerId: from },
+    { $set: { ownerId: to, updatedAt: new Date() } },
+  )
+
+  // The trash holds whole task documents, so those carry an owner too.
+  const bin = await trash()
+  await bin.updateMany(
+    { 'task.ownerId': from },
+    { $set: { 'task.ownerId': to } },
+  )
+
+  return modifiedCount
 }

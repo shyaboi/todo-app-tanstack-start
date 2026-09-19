@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test'
 import {
   createTask,
   gotoHydrated,
+  signIn,
   uniqueTitle,
   waitForServerAck,
 } from './helpers'
@@ -13,6 +14,9 @@ import {
 const unique = () => uniqueTitle('e2e probe')
 
 test('server-renders the task list from the database', async ({ page }) => {
+  // The seeded tasks belong to Ada, so this has to say who it is first.
+  await signIn(page)
+
   const response = await page.goto('/')
   const html = await response!.text()
 
@@ -71,6 +75,8 @@ test('refuses an empty title and says why', async ({ page }) => {
 test('the list is a real list, not divs pretending to be one', async ({
   page,
 }) => {
+  // The seeded tasks belong to Ada, so this has to say who it is first.
+  await signIn(page)
   await gotoHydrated(page)
   // Fails if TaskList is refactored into divs -- the design's a11y contract.
   await expect(page.getByRole('list')).toBeVisible()

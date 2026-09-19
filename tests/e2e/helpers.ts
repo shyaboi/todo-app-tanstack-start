@@ -70,3 +70,31 @@ export function waitForServerAck(page: Page, title: string): Promise<Response> {
       (await r.text().catch(() => '')).includes(title),
   )
 }
+
+/* The seed's fixture accounts. Credentials for a throwaway database, in the
+   open on purpose so a reviewer can sign in too. Ada owns the ten tasks from
+   the design's List view; Grace owns two, so a permissions test has something
+   to fail to reach. */
+export const ADA = { email: 'ada@example.com', password: 'seed-password-ada' }
+export const GRACE = {
+  email: 'grace@example.com',
+  password: 'seed-password-grace',
+}
+
+/**
+ * Signs in and waits until the account bar confirms it.
+ *
+ * Needed by anything that reads the SEEDED tasks: an anonymous visitor now gets
+ * a fresh guest account with an empty list, which is the correct behaviour and
+ * exactly why these tests have to say who they are.
+ */
+export async function signIn(
+  page: Page,
+  who: { email: string; password: string } = ADA,
+): Promise<void> {
+  await gotoHydrated(page, '/sign-in')
+  await page.getByLabel('Email').fill(who.email)
+  await page.getByLabel('Password').fill(who.password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await page.getByText('Signed in as').waitFor()
+}

@@ -72,6 +72,41 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  permissions:
+    name: permissions
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:8
+        ports: ['27017:27017']
+
+    env:
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: tasker_integration
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+
+      - name: wait for mongo
+        run: |
+          for i in $(seq 1 30); do
+            if (exec 3<>/dev/tcp/localhost/27017) 2>/dev/null; then
+              echo "mongo accepting connections after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::mongo did not accept connections within 30s"; exit 1
+
+      # Asserts at the service layer that one account cannot reach another's
+      # tasks. A browser-only guard cannot make this pass (PLAN.md 4.8).
+      - run: npm run test:integration
+
   e2e:
     name: critical path
     runs-on: ubuntu-latest

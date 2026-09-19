@@ -3,14 +3,16 @@ import viteReact from '@vitejs/plugin-react'
 
 // Deliberately does NOT load the TanStack Start plugin: unit and component
 // tests exercise modules directly and have no business building server
-// entries. Integration coverage lives in Playwright (PR 7.1).
+// entries. Full-stack coverage lives in Playwright.
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
-    /* Two environments, split structurally rather than per file. Server code
-       under jsdom would see a `window` that will never exist in production --
-       which is exactly the mistake the env guard is there to catch, so the
-       test environment must not paper over it. */
+    /* Three projects, split structurally rather than per file.
+       - ui:          jsdom, component and hook tests
+       - server:      node, because server code under jsdom would see a `window`
+                      that will never exist in production, which is exactly the
+                      mistake the env guard exists to catch
+       - integration: node AND a live MongoDB, so it is not part of `npm test` */
     projects: [
       {
         plugins: [viteReact()],
@@ -20,8 +22,8 @@ export default defineConfig({
           environment: 'jsdom',
           globals: true,
           setupFiles: ['./tests/setup.ts'],
-          include: ['src/**/*.test.{ts,tsx}', 'tests/unit/**/*.test.{ts,tsx}'],
-          exclude: ['src/server/**'],
+          include: ['src/**/*.test.tsx', 'tests/unit/**/*.test.{ts,tsx}'],
+          exclude: ['src/server/**', '**/*.integration.test.*'],
         },
       },
       {
@@ -30,7 +32,23 @@ export default defineConfig({
           name: 'server',
           environment: 'node',
           globals: true,
-          include: ['src/server/**/*.test.ts'],
+          include: ['src/server/**/*.test.ts', 'src/features/**/*.test.ts'],
+          exclude: ['**/*.integration.test.*'],
+        },
+      },
+      {
+        /* Requires a running MongoDB. Kept a separate project, and out of
+           `npm test`, so a missing database fails loudly instead of being
+           mistaken for a passing unit suite. CI gives it a throwaway database. */
+        resolve: { tsconfigPaths: true },
+        test: {
+          name: 'integration',
+          environment: 'node',
+          globals: true,
+          setupFiles: ['./tests/integration-setup.ts'],
+          include: ['src/**/*.integration.test.ts'],
+          testTimeout: 20_000,
+          hookTimeout: 20_000,
         },
       },
     ],

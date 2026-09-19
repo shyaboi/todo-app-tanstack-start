@@ -1,0 +1,35 @@
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-row);
+}
+
+/* A guest's tasks live behind one cookie, so the invitation to keep them is
+   stated plainly rather than hidden in a menu. */
+.guest {
+  background: var(--rust-50);
+  border-color: var(--rust-200);
+}
+
+.message {
+  font: var(--text-small);
+  color: var(--secondary);
+  min-width: 0;
+}
+
+.email {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}

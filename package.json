@@ -16,13 +16,14 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "vitest run --project ui --project server",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:check": "tsx scripts/check-db.ts",
     "seed": "tsx scripts/seed.ts",
     "dev:e2e": "vite dev --mode e2e",
-    "seed:e2e": "tsx --env-file-if-exists=.env.e2e scripts/seed.ts"
+    "seed:e2e": "tsx --env-file-if-exists=.env.e2e scripts/seed.ts",
+    "test:integration": "vitest run --project integration"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "5.3.0",
