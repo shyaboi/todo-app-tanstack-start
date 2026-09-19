@@ -71,6 +71,8 @@ export const taskPatch = z
     error: 'Nothing to update.',
   })
 
+export type TaskPatchInput = z.input<typeof taskPatch>
+
 export const updateTaskInput = z.strictObject({
   id: taskIdSchema,
   patch: taskPatch,

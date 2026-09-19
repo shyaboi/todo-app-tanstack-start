@@ -3,9 +3,11 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query'
-import { createTodo, listTodos } from './task.server'
+import { createTodo, listTodos, updateTodo } from './task.server'
+import { patchTask, replaceTask } from './task.cache'
 import type { Task } from './task.types'
 import type { CreateTaskInput } from './task.schema'
+import type { TaskPatchInput } from './task.schema'
 
 /* One cache contract for the whole app, rather than fetch calls scattered
    through components.
@@ -77,6 +79,52 @@ export function useCreateTask() {
     },
 
     // The database stays authoritative regardless of which path ran.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
+    },
+  })
+}
+
+/* Keyed per task id, so two rows being edited at once cannot collide, and so
+   a slow update on one row never blocks another. This is also what stops the
+   update-then-delete race in Failure Check 6 from interleaving. */
+export const taskMutationKey = (id: string) => ['tasks', id] as const
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: TaskPatchInput }) =>
+      updateTodo({ data: { id, patch } }),
+
+    onMutate: async ({ id, patch }) => {
+      // Stop an in-flight list refetch from landing on top of the optimistic
+      // write and reverting it mid-flight.
+      await queryClient.cancelQueries({ queryKey: tasksQueryKey })
+      const previous = queryClient.getQueryData<Task[]>(tasksQueryKey)
+
+      queryClient.setQueryData<Task[]>(tasksQueryKey, (old) =>
+        patchTask(old ?? [], id, patch),
+      )
+
+      return { previous }
+    },
+
+    // Restore the exact snapshot. Not "undo the patch" -- the snapshot is the
+    // only thing guaranteed to be what was there before.
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(tasksQueryKey, context.previous)
+      }
+    },
+
+    // Reconcile with the server's version, which owns updatedAt.
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Task[]>(tasksQueryKey, (old) =>
+        replaceTask(old ?? [], updated),
+      )
+    },
+
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
     },

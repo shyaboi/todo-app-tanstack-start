@@ -68,3 +68,57 @@ test('the list is a real list, not divs pretending to be one', async ({
   await expect(page.getByRole('list')).toBeVisible()
   expect(await page.getByRole('listitem').count()).toBeGreaterThan(0)
 })
+
+test('toggles status with the checkbox, and it persists', async ({ page }) => {
+  await gotoHydrated(page)
+
+  const row = page.getByRole('listitem').filter({ hasText: 'Draft the README' })
+  const checkbox = row.getByRole('checkbox')
+  await expect(checkbox).not.toBeChecked()
+
+  await checkbox.check()
+  await expect(checkbox).toBeChecked()
+
+  await page.reload()
+  const after = page
+    .getByRole('listitem')
+    .filter({ hasText: 'Draft the README' })
+    .getByRole('checkbox')
+  await expect(after).toBeChecked()
+
+  // Put it back, so the suite can run repeatedly against the same data.
+  await after.uncheck()
+})
+
+test('walks status forward through the pill', async ({ page }) => {
+  await gotoHydrated(page)
+  const row = page.getByRole('listitem').filter({ hasText: 'Seed demo data' })
+
+  // The accessible name states the current status and the outcome, so this
+  // also asserts the control is announced usefully.
+  await row
+    .getByRole('button', { name: /To do\. Change to In progress/ })
+    .click()
+  await expect(row.getByRole('button', { name: /In progress/ })).toBeVisible()
+
+  await row
+    .getByRole('button', { name: /In progress\. Change to Done/ })
+    .click()
+  await expect(
+    row.getByRole('button', { name: /Done\. Change to To do/ }),
+  ).toBeVisible()
+
+  await page.reload()
+  await expect(
+    page
+      .getByRole('listitem')
+      .filter({ hasText: 'Seed demo data' })
+      .getByRole('button', { name: /Done/ }),
+  ).toBeVisible()
+
+  await page
+    .getByRole('listitem')
+    .filter({ hasText: 'Seed demo data' })
+    .getByRole('button', { name: /Done\. Change to To do/ })
+    .click()
+})

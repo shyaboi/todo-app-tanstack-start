@@ -1,7 +1,8 @@
-import { StatusPill, PriorityPill } from '~/shared/components/Pill'
-import { isTempId } from '../task.query'
+import { PriorityPill } from '~/shared/components/Pill'
+import { isTempId, useUpdateTask } from '../task.query'
 import { listName } from '../task.types'
-import type { Task } from '../task.types'
+import type { Task, TaskStatus } from '../task.types'
+import { AdvanceStatusButton, DoneCheckbox } from './StatusControl'
 import styles from './TaskList.module.css'
 
 /* A real list of real list items. Rows are not divs pretending to be buttons
@@ -18,19 +19,28 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
 }
 
 function TaskRow({ task }: { task: Task }) {
-  const pending = isTempId(task.id)
+  const update = useUpdateTask()
+
+  // An optimistic row has no server id yet, so it cannot be updated.
+  const creating = isTempId(task.id)
   const overdue = isOverdue(task)
+
+  function setStatus(status: TaskStatus) {
+    update.mutate({ id: task.id, patch: { status } })
+  }
 
   const className = [
     styles.row,
     task.status === 'done' && styles.done,
-    pending && styles.pending,
+    creating && styles.pending,
   ]
     .filter(Boolean)
     .join(' ')
 
   return (
     <li className={className}>
+      <DoneCheckbox task={task} onChange={setStatus} disabled={creating} />
+
       <span className={styles.title}>{task.title}</span>
 
       <span className={styles.meta}>
@@ -49,9 +59,16 @@ function TaskRow({ task }: { task: Task }) {
         )}
 
         <PriorityPill priority={task.priority} />
-        <StatusPill status={task.status} />
+        <AdvanceStatusButton
+          task={task}
+          onChange={setStatus}
+          disabled={creating}
+        />
 
-        {pending && <span className={styles.saving}>Saving…</span>}
+        {/* Item-level pending state, never a page spinner (system design 13). */}
+        {(creating || update.isPending) && (
+          <span className={styles.saving}>Saving…</span>
+        )}
       </span>
     </li>
   )
@@ -74,9 +91,9 @@ function isOverdue(task: Task): boolean {
   return new Date(task.dueAt).getTime() < startOfToday()
 }
 
-/* Formatted with an explicit locale and timezone-free options so the server
-   and the client produce the same string. Letting the runtime pick would give
-   a hydration mismatch the moment CI and a browser disagree. */
+/* Formatted with an explicit locale so the server and the client produce the
+   same string. Letting the runtime pick would give a hydration mismatch the
+   moment CI and a browser disagree. */
 const dueFormat = new Intl.DateTimeFormat('en-GB', {
   day: 'numeric',
   month: 'short',
