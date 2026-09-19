@@ -83,9 +83,6 @@ jobs:
       mongo:
         image: mongo:8
         ports: ['27017:27017']
-        options: >-
-          --health-cmd "mongosh --quiet --eval 'db.runCommand(1).ok'"
-          --health-interval 10s --health-timeout 5s --health-retries 10
 
     env:
       MONGODB_URI: mongodb://localhost:27017
@@ -98,6 +95,22 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+
+      # Readiness is checked here rather than with a container --health-cmd:
+      # the inline form needs nested quoting inside YAML, and a wrong command
+      # reports as "failed to initialize container" rather than as a bad
+      # health check, which is a slow thing to diagnose. /dev/tcp is a bash
+      # builtin, so this needs nothing installed.
+      - name: wait for mongo
+        run: |
+          for i in $(seq 1 30); do
+            if (exec 3<>/dev/tcp/localhost/27017) 2>/dev/null; then
+              echo "mongo accepting connections after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::mongo did not accept connections within 30s"; exit 1
+
       - run: npx playwright install --with-deps chromium
       - run: npm run seed
       - run: npm run test:e2e
