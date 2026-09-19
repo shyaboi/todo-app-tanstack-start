@@ -19,7 +19,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:check": "tsx scripts/check-db.ts"
+    "db:check": "tsx scripts/check-db.ts",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "5.3.0",
