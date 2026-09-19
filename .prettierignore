@@ -1,0 +1,9 @@
+dist/
+.output/
+coverage/
+playwright-report/
+test-results/
+src/routeTree.gen.ts
+package-lock.json
+*.pdf
+Tasker — To-Do App FE Design.html

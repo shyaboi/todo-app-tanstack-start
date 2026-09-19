@@ -1,0 +1,10 @@
+/* Replaced by the full token set in PR 0.2. */
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  background: #fbfaf7;
+  color: #1b1a16;
+}
+main {
+  padding: 40px;
+}
