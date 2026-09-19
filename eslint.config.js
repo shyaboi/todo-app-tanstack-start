@@ -68,6 +68,12 @@ export default tseslint.config(
     extends: [tseslint.configs.disableTypeChecked],
   },
   {
+    // Declaration merging is the whole point of these files: an interface that
+    // adds no members of its own is how you extend a third-party type.
+    files: ['**/*.d.ts'],
+    rules: { '@typescript-eslint/no-empty-object-type': 'off' },
+  },
+  {
     files: ['**/*.{test,spec}.{ts,tsx}', 'tests/**'],
     rules: { '@typescript-eslint/no-non-null-assertion': 'off' },
   },

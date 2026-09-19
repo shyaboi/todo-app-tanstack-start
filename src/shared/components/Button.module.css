@@ -1,0 +1,95 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--control-height);
+  padding: 0 var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font: var(--text-body);
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.small {
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  font: var(--text-small);
+  font-weight: 600;
+}
+
+/* Icon-only stays square and never drops below the touch target. */
+.iconOnly {
+  width: var(--control-height);
+  padding: 0;
+}
+
+.iconOnly.small {
+  width: var(--control-height-sm);
+}
+
+.primary {
+  background: var(--rust-700);
+  color: #fff;
+}
+
+.primary:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--rust-700) 88%, var(--ink));
+}
+
+.secondary {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--ink);
+}
+
+.secondary:hover:not(:disabled) {
+  background: var(--sunken);
+  border-color: var(--border-strong);
+}
+
+.ghost {
+  background: transparent;
+  color: var(--secondary);
+}
+
+.ghost:hover:not(:disabled) {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+/* The palette contains no red. Destructive borrows the darkest rust steps,
+   exactly as the Foundations screen specifies. */
+.danger {
+  background: var(--rust-800);
+  color: #fff;
+}
+
+.danger:hover:not(:disabled) {
+  background: color-mix(in oklab, var(--rust-800) 85%, var(--ink));
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentcolor;
+  border-top-color: transparent;
+  border-radius: var(--radius-pill);
+  animation: spin 640ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

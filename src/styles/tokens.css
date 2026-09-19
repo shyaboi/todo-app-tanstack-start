@@ -1,0 +1,110 @@
+/* Design tokens, transcribed from the Foundations screen of the FE design.
+   Values are literal: where the design states a hex, contrast ratio or
+   duration, it is reproduced here rather than approximated. */
+
+:root {
+  /* ── Neutral ground ──────────────────────────────────────────────────────
+     Nothing is pure grey; every step carries the same warm cast. */
+  --surface: #ffffff;
+  --canvas: #fbfaf7;
+  --sunken: #f4f3ef;
+  --hairline: #edece7;
+  --border: #dfddd5;
+  --border-strong: #c9c6bc;
+  --meta: #767267;
+  --secondary: #57544b;
+  --ink: #1b1a16;
+  --ink-soft: #3a3830;
+
+  /* ── Rust: action & in progress ──────────────────────────────────────────
+     Primary buttons, focus rings, the brand mark, the In progress status.
+     Destructive actions borrow the two darkest steps rather than adding
+     a red the palette does not otherwise contain. */
+  --rust-50: #fbf2ee;
+  --rust-100: #f8e5dc;
+  --rust-200: #ebcbbc;
+  --rust-400: #c9856a;
+  --rust-600: #a8462a;
+  --rust-700: #96401f;
+  --rust-800: #7a3a1e;
+
+  /* ── Pine: done & confirmed ──────────────────────────────────────────────
+     Sits at the same lightness and chroma as rust, so neither shouts. */
+  --pine-50: #f2f7f4;
+  --pine-100: #dce9e2;
+  --pine-200: #c3d9cc;
+  --pine-400: #5c8b78;
+  --pine-600: #275c4c;
+  --pine-700: #1d463a;
+
+  /* ── Type ────────────────────────────────────────────────────────────────
+     Instrument Serif for the few big moments, Hanken Grotesk for everything
+     you actually read, JetBrains Mono for keys and ids. */
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Hanken Grotesk Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+
+  --text-display: 40px/44px var(--font-display);
+  --text-title1: 600 24px/30px var(--font-sans);
+  --text-title2: 600 18px/24px var(--font-sans);
+  --text-body: 400 15px/22px var(--font-sans);
+  --text-row: 400 14.5px/20px var(--font-sans);
+  --text-small: 400 13px/18px var(--font-sans);
+  --text-micro: 600 11px/14px var(--font-sans);
+  --text-mono: 400 12px/16px var(--font-mono);
+
+  /* ── Space: 4px base ─────────────────────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-16: 64px;
+
+  /* ── Shape ───────────────────────────────────────────────────────────── */
+  --radius-kbd: 6px;
+  --radius-control: 9px;
+  --radius-row: 11px;
+  --radius-panel: 14px;
+  --radius-pill: 999px;
+
+  /* ── Elevation ───────────────────────────────────────────────────────── */
+  --shadow-row: 0 1px 2px rgb(27 26 22 / 4%);
+  --shadow-popover: 0 4px 16px rgb(27 26 22 / 8%);
+  --shadow-dialog: 0 16px 48px rgb(27 26 22 / 16%);
+
+  /* ── Controls ────────────────────────────────────────────────────────────
+     44px is the default height so the same markup works on touch. */
+  --control-height: 44px;
+  --control-height-sm: 34px;
+  --touch-target: 48px;
+
+  /* ── Motion ──────────────────────────────────────────────────────────────
+     Motion only ever confirms a change the user made. Nothing animates on
+     load, and no row moves under a cursor that is about to click it. */
+  --motion-fast: 120ms; /* hover, checkbox, chip */
+  --motion-panel: 180ms; /* detail panel, popover */
+  --motion-sheet: 240ms; /* mobile sheet, row removal */
+  --ease: cubic-bezier(0.2, 0, 0.13, 1.02);
+}
+
+/* The design states this plainly: 0ms everything, under reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-panel: 0ms;
+    --motion-sheet: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

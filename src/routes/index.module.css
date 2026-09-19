@@ -1,0 +1,31 @@
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 18vh var(--space-6) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.title {
+  font: var(--text-display);
+  color: var(--ink);
+}
+
+.lede {
+  font: var(--text-body);
+  color: var(--secondary);
+}
+
+.link {
+  font: var(--text-small);
+  font-weight: 600;
+  color: var(--rust-700);
+  text-decoration: none;
+  padding: var(--space-2) 0;
+}
+
+.link:hover {
+  text-decoration: underline;
+}

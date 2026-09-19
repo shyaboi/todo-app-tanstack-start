@@ -1,0 +1,73 @@
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  font: var(--text-micro);
+  white-space: nowrap;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+}
+
+/* Measured against --surface: To do 6.2:1, In progress 5.6:1, Done 6.2:1.
+   Every pill also carries its label, so status is never colour alone. */
+.todo {
+  background: var(--sunken);
+  color: var(--secondary);
+}
+
+.todo .dot {
+  background: var(--meta);
+}
+
+.doing {
+  background: var(--rust-100);
+  color: var(--rust-700);
+}
+
+.doing .dot {
+  background: var(--rust-600);
+}
+
+.done {
+  background: var(--pine-100);
+  color: var(--pine-600);
+}
+
+.done .dot {
+  background: var(--pine-600);
+}
+
+.neutral {
+  background: var(--sunken);
+  color: var(--secondary);
+}
+
+.outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--secondary);
+}
+
+/* Priority reads as rank, not as another status: mono, quiet, uppercase. */
+.priority {
+  font: var(--text-mono);
+  font-weight: 500;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-kbd);
+  background: var(--sunken);
+  color: var(--secondary);
+}
+
+.p1 {
+  background: var(--rust-50);
+  color: var(--rust-700);
+}

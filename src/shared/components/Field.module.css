@@ -1,0 +1,79 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font: var(--text-micro);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--meta);
+}
+
+.required {
+  color: var(--rust-700);
+  margin-inline-start: 2px;
+}
+
+.control {
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: var(--text-body);
+  color: var(--ink);
+  transition:
+    border-color var(--motion-fast) var(--ease),
+    background-color var(--motion-fast) var(--ease);
+}
+
+.control::placeholder {
+  color: var(--meta);
+}
+
+.control:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.control:disabled {
+  background: var(--sunken);
+  cursor: not-allowed;
+}
+
+.textarea {
+  height: auto;
+  min-height: 88px;
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: 22px;
+}
+
+.invalid {
+  border-color: var(--rust-600);
+  background: var(--rust-50);
+}
+
+.description {
+  font: var(--text-small);
+  color: var(--meta);
+}
+
+/* Errors are never colour alone: the message states the problem in words. */
+.error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font: var(--text-small);
+  font-weight: 600;
+  color: var(--rust-700);
+}
+
+.errorDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--rust-600);
+  flex-shrink: 0;
+}

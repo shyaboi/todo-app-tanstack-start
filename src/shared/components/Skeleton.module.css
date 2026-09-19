@@ -1,0 +1,29 @@
+/* Skeletons match the real row geometry exactly, so nothing shifts on arrival.
+   They appear only after 200ms -- faster responses go straight to content and
+   never flash. The delay is owned by the caller; this is just the shape. */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--hairline) 25%,
+    var(--sunken) 37%,
+    var(--hairline) 63%
+  );
+  background-size: 400% 100%;
+  border-radius: var(--radius-kbd);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
