@@ -19,10 +19,7 @@ type BaseProps = {
 type WithAccessibleName =
   { children: ReactNode } | { 'aria-label': string; children?: ReactNode }
 
-export type ButtonProps = Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  'className'
-> &
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   BaseProps &
   WithAccessibleName
 
@@ -35,6 +32,7 @@ export function Button({
   disabled,
   children,
   type = 'button',
+  className: extra,
   ...rest
 }: ButtonProps) {
   const className = [
@@ -42,6 +40,7 @@ export function Button({
     styles[variant],
     size === 'small' && styles.small,
     iconOnly && styles.iconOnly,
+    extra,
   ]
     .filter(Boolean)
     .join(' ')

@@ -6,6 +6,7 @@ import { isTempId, useUpdateTask } from '../task.query'
 import { listName } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
 import { AdvanceStatusButton, DoneCheckbox } from './StatusControl'
+import { InlineTitle } from './InlineTitle'
 import styles from './TaskList.module.css'
 
 /* A real list of real list items. Rows are not divs pretending to be buttons
@@ -16,7 +17,7 @@ export function TaskList({
   onDelete,
 }: {
   tasks: Task[]
-  /** Raised after a confirmed delete so the page can offer undo. */
+  /** Raised on confirm. The page owns the mutation, so it survives the row. */
   onDelete: (task: Task) => void
 }) {
   return (
@@ -35,10 +36,10 @@ function TaskRow({
   task: Task
   onDelete: (task: Task) => void
 }) {
-  const update = useUpdateTask()
+  const update = useUpdateTask(task.id)
   const [confirming, setConfirming] = useState(false)
 
-  // An optimistic row has no server id yet, so it cannot be updated.
+  // An optimistic row has no server id yet, so it cannot be changed or deleted.
   const creating = isTempId(task.id)
   const overdue = isOverdue(task)
 
@@ -58,7 +59,11 @@ function TaskRow({
     <li className={className}>
       <DoneCheckbox task={task} onChange={setStatus} disabled={creating} />
 
-      <span className={styles.title}>{task.title}</span>
+      <InlineTitle
+        task={task}
+        disabled={creating}
+        onSave={(title) => update.mutate({ id: task.id, patch: { title } })}
+      />
 
       <span className={styles.meta}>
         {task.listId && (
@@ -91,6 +96,7 @@ function TaskRow({
           variant="ghost"
           size="small"
           iconOnly
+          className={styles.rowAction}
           disabled={creating}
           // Destructive actions carry a clear accessible name that says WHAT
           // is being deleted -- "Delete" alone is ambiguous in a list.

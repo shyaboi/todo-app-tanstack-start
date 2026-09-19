@@ -97,15 +97,18 @@ export function useCreateTask() {
   })
 }
 
-/* Keyed per task id, so two rows being edited at once cannot collide, and so
-   a slow update on one row never blocks another. This is also what stops the
-   update-then-delete race in Failure Check 6 from interleaving. */
-export const taskMutationKey = (id: string) => ['tasks', id] as const
-
-export function useUpdateTask() {
+/* Scoped per task id. A mutationKey alone does NOT serialise anything in
+   TanStack Query -- mutations run in parallel unless they share a scope. Two
+   quick status changes on one row would then race, and whichever response
+   landed last would win, so a todo -> doing -> done double click could settle
+   on "doing". Scoping by task id queues them; different rows still run
+   concurrently. This is Failure Check 6, and the design anticipates it in its
+   own demo data ("Debounce rapid toggles on the same row"). */
+export function useUpdateTask(taskId: string) {
   const queryClient = useQueryClient()
 
   return useMutation({
+    scope: { id: `task-${taskId}` },
     mutationFn: ({ id, patch }: { id: string; patch: TaskPatchInput }) =>
       updateTodo({ data: { id, patch } }),
 
@@ -143,6 +146,22 @@ export function useUpdateTask() {
   })
 }
 
+/** Everything the undo toast needs to reverse a delete. */
+export interface PendingUndo {
+  undoToken: string
+  task: Task
+  index: number
+}
+
+/* Deliberately NOT scoped per task, and deliberately not owned by the row.
+   The optimistic removal unmounts the row before the server answers, and a
+   mutation callback belonging to an unmounted component never runs -- so the
+   undo toast would never appear. The page outlives every row, so it owns this.
+
+   That costs the per-task serialisation that updates get. It is safe here
+   because delete is terminal: an update racing a delete resolves to NOT_FOUND
+   from the server, which is Failure Check 6's own answer -- the database stays
+   authoritative and the cache reconciles on settle. */
 export function useDeleteTask() {
   const queryClient = useQueryClient()
 

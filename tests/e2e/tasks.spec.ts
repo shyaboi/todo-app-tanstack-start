@@ -212,3 +212,58 @@ test('a deleted task stays deleted once the undo window closes', async ({
   await page.reload()
   await expect(page.getByText(title, { exact: true })).toHaveCount(0)
 })
+
+test('edits a title in place, and the change persists', async ({ page }) => {
+  const title = unique()
+  const renamed = `${title} renamed`
+  await gotoHydrated(page)
+  const row = await createTask(page, title)
+
+  await row.getByRole('button', { name: `Edit title: ${title}` }).click()
+
+  // Located by aria-label, not through the row: once editing starts the title
+  // is an input value rather than row text, so a hasText filter stops matching.
+  const input = page.getByRole('textbox', { name: `Title of "${title}"` })
+  const saved = waitForServerAck(page, renamed)
+  await input.fill(renamed)
+  await input.press('Enter')
+  await saved
+
+  await page.reload()
+  await expect(page.getByText(renamed, { exact: true })).toBeVisible()
+})
+
+test('escape reverts an edit without saving', async ({ page }) => {
+  const title = unique()
+  await gotoHydrated(page)
+  const row = await createTask(page, title)
+
+  await row.getByRole('button', { name: `Edit title: ${title}` }).click()
+  const input = page.getByRole('textbox', { name: `Title of "${title}"` })
+  await input.fill('this should never be stored')
+  await input.press('Escape')
+
+  await expect(page.getByText(title, { exact: true })).toBeVisible()
+  await expect(page.getByText('this should never be stored')).toHaveCount(0)
+
+  // The real check: nothing reached the database either.
+  await page.reload()
+  await expect(page.getByText(title, { exact: true })).toBeVisible()
+  await expect(page.getByText('this should never be stored')).toHaveCount(0)
+})
+
+test('refuses to save an empty title and keeps you in the field', async ({
+  page,
+}) => {
+  const title = unique()
+  await gotoHydrated(page)
+  const row = await createTask(page, title)
+
+  await row.getByRole('button', { name: `Edit title: ${title}` }).click()
+  const input = page.getByRole('textbox', { name: `Title of "${title}"` })
+  await input.fill('   ')
+  await input.press('Enter')
+
+  await expect(page.getByRole('alert')).toContainText('Give the task a title')
+  await expect(input).toBeFocused()
+})

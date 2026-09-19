@@ -54,7 +54,7 @@ describe('useUpdateTask', () => {
     // Never resolves: the cache is observed mid-flight, on purpose.
     updateTodo.mockReturnValue(new Promise(() => {}))
 
-    const { result } = renderHook(() => useUpdateTask(), { wrapper })
+    const { result } = renderHook(() => useUpdateTask('b'), { wrapper })
     result.current.mutate({ id: 'b', patch: { status: 'done' } })
 
     await waitFor(() => {
@@ -70,7 +70,7 @@ describe('useUpdateTask', () => {
     )
     updateTodo.mockRejectedValue(new Error('server said no'))
 
-    const { result } = renderHook(() => useUpdateTask(), { wrapper })
+    const { result } = renderHook(() => useUpdateTask('b'), { wrapper })
     result.current.mutate({ id: 'b', patch: { status: 'done' } })
 
     await waitFor(() => expect(result.current.isError).toBe(true))
@@ -88,7 +88,7 @@ describe('useUpdateTask', () => {
       task('b', { status: 'done', updatedAt: '2026-09-20T10:00:00.000Z' }),
     )
 
-    const { result } = renderHook(() => useUpdateTask(), { wrapper })
+    const { result } = renderHook(() => useUpdateTask('b'), { wrapper })
     result.current.mutate({ id: 'b', patch: { status: 'done' } })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
@@ -102,7 +102,7 @@ describe('useUpdateTask', () => {
     const { queryClient, wrapper } = harness()
     updateTodo.mockResolvedValue(task('b', { status: 'done' }))
 
-    const { result } = renderHook(() => useUpdateTask(), { wrapper })
+    const { result } = renderHook(() => useUpdateTask('b'), { wrapper })
     result.current.mutate({ id: 'b', patch: { status: 'done' } })
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true))
