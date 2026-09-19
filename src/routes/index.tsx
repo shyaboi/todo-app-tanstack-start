@@ -67,7 +67,7 @@ function TasksPage() {
           <p className={styles.emptyTitle}>Nothing here yet</p>
           <p className={styles.emptyBody}>
             Add your first task above. Search, filters and the command palette
-            arrive in Sprints 3 and 4.
+            arrive in Sprints 4 and 5.
           </p>
         </div>
       ) : (
