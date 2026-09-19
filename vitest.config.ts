@@ -6,14 +6,33 @@ import viteReact from '@vitejs/plugin-react'
 // entries. Integration coverage lives in Playwright (PR 7.1).
 export default defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [viteReact()],
   test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: ['./tests/setup.ts'],
-    include: [
-      'src/**/*.{test,spec}.{ts,tsx}',
-      'tests/unit/**/*.{test,spec}.{ts,tsx}',
+    /* Two environments, split structurally rather than per file. Server code
+       under jsdom would see a `window` that will never exist in production --
+       which is exactly the mistake the env guard is there to catch, so the
+       test environment must not paper over it. */
+    projects: [
+      {
+        plugins: [viteReact()],
+        resolve: { tsconfigPaths: true },
+        test: {
+          name: 'ui',
+          environment: 'jsdom',
+          globals: true,
+          setupFiles: ['./tests/setup.ts'],
+          include: ['src/**/*.test.{ts,tsx}', 'tests/unit/**/*.test.{ts,tsx}'],
+          exclude: ['src/server/**'],
+        },
+      },
+      {
+        resolve: { tsconfigPaths: true },
+        test: {
+          name: 'server',
+          environment: 'node',
+          globals: true,
+          include: ['src/server/**/*.test.ts'],
+        },
+      },
     ],
     coverage: {
       provider: 'v8',
