@@ -13,28 +13,48 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: '24'
+  GITLEAKS_VERSION: '8.24.3'
+
 jobs:
-  # PLAN.md 4.7 vector 1. Runs first and independently: a leaked credential is
-  # the one failure the other jobs cannot tell you about.
+  # PLAN.md 4.7. Runs independently of the build: a leaked credential is the
+  # one failure the other jobs cannot tell you about.
   secrets:
     name: secret scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # gitleaks needs full history, not just the tip
-      - name: gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 # the history scan needs every commit, not just the tip
+
+      # Cheapest check first, so a tracked env file is still reported even if
+      # the scanner itself fails to install.
       - name: no env files are tracked
         run: |
-          if git ls-files --error-unmatch '.env' '.env.*' 2>/dev/null \
-            | grep -v '^\.env\.example$' | grep -q .; then
-            echo "::error::A .env file is tracked. See PLAN.md 4.7."
+          tracked=$(git ls-files -- '.env' '.env.*' | grep -v '^\.env\.example$' || true)
+          if [ -n "$tracked" ]; then
+            echo "::error::Tracked env file(s): $tracked - see PLAN.md 4.7"
             exit 1
           fi
           echo "No tracked env files."
+
+      # The binary directly, not gitleaks-action. The action scans the range
+      # BEFORE^..AFTER; on a first push BEFORE is the root commit, whose parent
+      # does not exist, so the scan aborts having read 0 bytes and still reports
+      # "no leaks found". `gitleaks git` scans all history unconditionally.
+      - name: install gitleaks
+        run: |
+          mkdir -p "$RUNNER_TEMP/gitleaks"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C "$RUNNER_TEMP/gitleaks" gitleaks
+          echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+
+      # .gitleaks.toml adds a database-connection-URI rule. The default ruleset
+      # does not match one, which would leave this project's only real
+      # credential invisible to the scanner.
+      - name: scan full history
+        run: gitleaks git --no-banner --redact --exit-code 1 --config .gitleaks.toml .
 
   verify:
     name: typecheck · lint · test · build
@@ -43,7 +63,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - run: npm run typecheck
@@ -52,16 +72,14 @@ jobs:
       - run: npm test
       - run: npm run build
 
-  # Gate on main only, per PLAN.md 5 rule 8. Added in PR 7.1.
   e2e:
     name: critical path
-    if: github.base_ref == 'main' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium

@@ -1,0 +1,24 @@
+# Gitleaks' default ruleset covers cloud-provider keys but does NOT match a
+# database connection URI -- which is the only credential this project has.
+# Verified: without the rule below, the live Atlas string scans clean.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "database-connection-uri"
+description = "Database connection URI with inline credentials"
+regex = '''(?i)\b(mongodb(\+srv)?|postgres(ql)?|mysql|redis[s]?|amqp[s]?)://[^\s:/@]+:[^\s:/@]+@[^\s/"']+'''
+tags = ["database", "credentials"]
+
+  # Documentation is allowed to show the SHAPE of a URI, never a real one.
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    '''<user>''',
+    '''<password>''',
+    '''<cluster>''',
+    '''USERNAME|PASSWORD''',
+    '''YOUR_''',
+    '''(?i)example''',
+    '''localhost|127\.0\.0\.1''',
+  ]

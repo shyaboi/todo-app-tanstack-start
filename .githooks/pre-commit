@@ -1,0 +1,32 @@
+#!/bin/sh
+# Last line of defence for PLAN.md 4.7: refuse to record a secret at all.
+# gitleaks covers this in CI; this catches it before it reaches history,
+# where removing it means rewriting every commit after it.
+set -e
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# 1. No env file may ever be staged, .env.example aside.
+for f in $staged; do
+  case "$f" in
+    .env.example) ;;
+    .env|.env.*) 
+      printf '\033[31mpre-commit: refusing to commit %s\033[0m\n' "$f"
+      printf 'Env files hold credentials. See PLAN.md 4.7.\n'
+      exit 1 ;;
+  esac
+done
+
+# 2. No credential-shaped string in the staged content. The placeholder form
+#    <user>:<password> is allowed so the docs can show the shape.
+if git diff --cached -U0 -- $staged \
+   | grep -nE '^\+' \
+   | grep -vE '<user>|<password>|<cluster>|YOUR_|example' \
+   | grep -qE 'mongodb(\+srv)?://[^<[:space:]]+:[^<@[:space:]]+@'; then
+  printf '\033[31mpre-commit: a MongoDB connection string with credentials is staged.\033[0m\n'
+  printf 'Move it into .env, which is ignored. See PLAN.md 4.7.\n'
+  exit 1
+fi
+
+exit 0
