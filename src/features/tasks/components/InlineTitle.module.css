@@ -1,0 +1,55 @@
+.wrap {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A real button, styled to look like the text it replaces. Using a div with
+   onClick would lose keyboard activation and the button role. */
+.trigger {
+  width: 100%;
+  text-align: start;
+  border: 0;
+  background: none;
+  padding: 2px 4px;
+  margin-inline-start: -4px;
+  border-radius: 5px;
+  font: var(--text-row);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color var(--motion-fast) var(--ease);
+}
+
+.trigger:hover {
+  background: var(--sunken);
+}
+
+.done .trigger {
+  color: var(--meta);
+  text-decoration: line-through;
+}
+
+.input {
+  width: 100%;
+  padding: 2px 4px;
+  margin-inline-start: -4px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--surface);
+  font: var(--text-row);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.9px var(--rust-600);
+}
+
+.input:focus {
+  outline: none;
+}
+
+.error {
+  display: block;
+  font: var(--text-small);
+  font-weight: 600;
+  color: var(--rust-700);
+  padding-block-start: var(--space-1);
+}

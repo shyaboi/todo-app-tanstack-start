@@ -71,6 +71,8 @@ export const taskPatch = z
     error: 'Nothing to update.',
   })
 
+export type TaskPatchInput = z.input<typeof taskPatch>
+
 export const updateTaskInput = z.strictObject({
   id: taskIdSchema,
   patch: taskPatch,
@@ -79,6 +81,11 @@ export const updateTaskInput = z.strictObject({
 export type UpdateTaskInput = z.input<typeof updateTaskInput>
 
 export const deleteTaskInput = z.strictObject({ id: taskIdSchema })
+
+/** A server-issued UUID. Validated so a malformed token fails fast. */
+export const restoreTaskInput = z.strictObject({
+  undoToken: z.uuid('That is not a valid undo token.'),
+})
 
 /* Filters are validated too. They reach the database, so they are as untrusted
    as anything else -- and `q` in particular must never become a Mongo operator

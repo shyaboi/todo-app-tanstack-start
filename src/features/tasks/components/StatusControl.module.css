@@ -1,0 +1,58 @@
+/* A real checkbox, restyled -- not a div with a click handler. Keyboard,
+   screen-reader semantics and form behaviour all come free that way. */
+.checkbox {
+  appearance: none;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.9px solid var(--border-strong);
+  border-radius: 5px;
+  background: var(--surface);
+  display: grid;
+  place-content: center;
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease);
+}
+
+.checkbox:hover:not(:disabled) {
+  border-color: var(--pine-400);
+}
+
+.checkbox::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  transform: scale(0);
+  transition: transform var(--motion-fast) var(--ease);
+  background: var(--surface);
+  clip-path: polygon(14% 44%, 0 65%, 40% 100%, 100% 16%, 80% 0, 38% 70%);
+}
+
+.checkbox:checked {
+  background: var(--pine-600);
+  border-color: var(--pine-600);
+}
+
+.checkbox:checked::after {
+  transform: scale(1);
+}
+
+.checkbox:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* The status pill doubles as the control that advances status. */
+.advance {
+  border: 0;
+  background: none;
+  padding: 0;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+}
+
+.advance:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}

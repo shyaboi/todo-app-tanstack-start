@@ -76,3 +76,23 @@
   color: var(--meta);
   flex-shrink: 0;
 }
+
+/* Quiet until you reach for it. Opacity rather than display:none so the
+   button stays in the tab order and reachable by keyboard -- the design is
+   explicit that nothing is pointer-only. */
+.rowAction {
+  opacity: 0;
+  transition: opacity var(--motion-fast) var(--ease);
+}
+
+.row:hover .rowAction,
+.row:focus-within .rowAction {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  /* No hover on touch, so the action is always shown. */
+  .rowAction {
+    opacity: 1;
+  }
+}

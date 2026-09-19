@@ -20,9 +20,27 @@ export interface TaskDoc extends Document {
 
 export const COLLECTION = 'tasks'
 
+/* Deleted tasks are parked here for the length of the undo window, then they
+   are gone. This is NOT soft deletion as a domain feature -- nothing reads
+   from this collection except restoreTodo, and the TTL index clears it
+   automatically, so no sweeper process is needed (system design 19). */
+export const TRASH_COLLECTION = 'tasks_trash'
+
+export interface TrashDoc extends Document {
+  /** Opaque token handed to the client; the only key it can restore with. */
+  token: string
+  task: TaskDoc & { _id: ObjectId }
+  deletedAt: Date
+}
+
 export async function tasks(): Promise<Collection<TaskDoc>> {
   const db = await getDb()
   return db.collection<TaskDoc>(COLLECTION)
+}
+
+export async function trash(): Promise<Collection<TrashDoc>> {
+  const db = await getDb()
+  return db.collection<TrashDoc>(TRASH_COLLECTION)
 }
 
 /**
@@ -65,6 +83,15 @@ export function ensureIndexes(): Promise<void> {
       { key: { status: 1, dueAt: 1 }, name: 'status_dueAt' },
       // Text search over the fields the design says search matches.
       { key: { title: 'text', notes: 'text' }, name: 'title_notes_text' },
+    ])
+
+    const bin = await trash()
+    await bin.createIndexes([
+      { key: { token: 1 }, name: 'token', unique: true },
+      /* Mongo expires these itself. The undo window is 8 seconds; 5 minutes of
+         slack covers a slow network and a distracted user without turning the
+         trash into a second source of task data. */
+      { key: { deletedAt: 1 }, name: 'ttl', expireAfterSeconds: 300 },
     ])
   })().catch((error: unknown) => {
     // Let the next call retry rather than caching a rejection forever.

@@ -2,7 +2,8 @@ import '@tanstack/react-start/server-only'
 import { ObjectId } from 'mongodb'
 import { AppError, toSafeError } from '~/server/errors'
 import { logger } from '~/server/logger'
-import { tasks, toTask, ensureIndexes } from './task.repo'
+import { randomUUID } from 'node:crypto'
+import { tasks, trash, toTask, ensureIndexes } from './task.repo'
 import type { Sort } from 'mongodb'
 import type { TaskDoc } from './task.repo'
 import type { Task } from './task.types'
@@ -140,16 +141,48 @@ export function updateTask(id: string, patch: Patch): Promise<Task> {
   })
 }
 
-export function deleteTask(id: string): Promise<{ id: string }> {
+export function deleteTask(
+  id: string,
+): Promise<{ id: string; undoToken: string }> {
   return run('deleteTask', id, async () => {
     const col = await tasks()
-    const result = await col.deleteOne({ _id: new ObjectId(id) })
+
+    /* findOneAndDelete, not deleteOne: the document is needed to park it for
+       undo, and doing both in one round trip means there is no window where
+       the task is gone but unrecoverable. */
+    const doc = await col.findOneAndDelete({ _id: new ObjectId(id) })
+
     // Deleting something already gone is reported, not silently treated as
     // success: the UI needs to know its optimistic removal was wrong.
-    if (result.deletedCount === 0) {
-      throw new AppError('NOT_FOUND', 'That task no longer exists.')
+    if (!doc) throw new AppError('NOT_FOUND', 'That task no longer exists.')
+
+    const undoToken = randomUUID()
+    const bin = await trash()
+    await bin.insertOne({ token: undoToken, task: doc, deletedAt: new Date() })
+
+    return { id, undoToken }
+  })
+}
+
+/* The token is the entire authority to restore, and it is unguessable and
+   server-issued. The client never sends the task back, so it cannot alter a
+   field on the way through -- the restored task is byte-for-byte the one that
+   was deleted, including its original id and createdAt. */
+export function restoreTask(undoToken: string): Promise<Task> {
+  return run('restoreTask', undefined, async () => {
+    const bin = await trash()
+    const entry = await bin.findOneAndDelete({ token: undoToken })
+
+    if (!entry) {
+      throw new AppError(
+        'NOT_FOUND',
+        'That task can no longer be restored. The undo window has passed.',
+      )
     }
-    return { id }
+
+    const col = await tasks()
+    await col.insertOne(entry.task)
+    return toTask(entry.task)
   })
 }
 

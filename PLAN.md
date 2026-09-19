@@ -209,7 +209,7 @@ Non-negotiable, and enforced mechanically rather than by discipline. There are *
 4. **Lanes.** Each PR carries a lane (**A** server/data · **B** UI/interaction · **C** infra/docs). Same-sprint PRs in different lanes have no shared files and can be built concurrently.
 5. **Blocked-by is explicit and never crosses forward.** A PR may only depend on merged work.
 6. **Commits:** one brief sentence saying what changed, in the imperative. No `type(scope):` prefix and no attribution trailers — the message is for a person, the diff already says where. Squash-merge, so the PR title becomes the commit message.
-7. **Branches:** `s<sprint>/<lane>-<slug>` — e.g. `s2/b-task-row-anatomy`.
+7. **Branches:** one branch per sprint, `s<sprint>/<slug>` — e.g. `s2/complete-crud`. Each PR in the sprint is a commit on that branch; the branch opens a pull request when the sprint closes, so the whole sprint is reviewed as one coherent change rather than in fragments.
 8. **CI gate on every PR:** typecheck → lint → unit/component → build. E2E runs on PRs targeting `main` from Sprint 7 onward.
 9. **Definition of Done** (per PR): types pass · tests written and green · keyboard path works · no new axe violations · no `console.log` · **gitleaks clean, no `.env*` in the diff, and nothing added to the Query cache but `Task` DTOs** (§4.7).
 

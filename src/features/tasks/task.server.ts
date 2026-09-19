@@ -3,6 +3,7 @@ import {
   createTaskInput,
   deleteTaskInput,
   listTasksInput,
+  restoreTaskInput,
   updateTaskInput,
 } from './task.schema'
 import * as service from './task.service'
@@ -30,4 +31,10 @@ export const updateTodo = createServerFn({ method: 'POST' })
 
 export const deleteTodo = createServerFn({ method: 'POST' })
   .validator(deleteTaskInput)
-  .handler(({ data }): Promise<{ id: string }> => service.deleteTask(data.id))
+  .handler(({ data }): Promise<{ id: string; undoToken: string }> =>
+    service.deleteTask(data.id),
+  )
+
+export const restoreTodo = createServerFn({ method: 'POST' })
+  .validator(restoreTaskInput)
+  .handler(({ data }): Promise<Task> => service.restoreTask(data.undoToken))

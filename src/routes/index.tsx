@@ -1,7 +1,15 @@
+import { useCallback, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 
-import { tasksQuery } from '~/features/tasks/task.query'
+import { UndoToast } from '~/shared/components/UndoToast'
+import {
+  tasksQuery,
+  useDeleteTask,
+  useRestoreTask,
+} from '~/features/tasks/task.query'
+import type { PendingUndo } from '~/features/tasks/task.query'
+import type { Task } from '~/features/tasks/task.types'
 import { TaskList } from '~/features/tasks/components/TaskList'
 import { TaskComposer } from '~/features/tasks/components/TaskComposer'
 import styles from './index.module.css'
@@ -19,6 +27,27 @@ function TasksPage() {
   // Already resolved by the loader, so this paints on the server with data.
   // No useEffect, no fetch waterfall.
   const { data: tasks = [] } = useQuery(tasksQuery)
+
+  /* Ephemeral UI state, held locally rather than in a store: losing a pending
+     undo on reload is the correct behaviour (PLAN.md 4.1). */
+  const [undo, setUndo] = useState<PendingUndo | null>(null)
+  const restore = useRestoreTask()
+  const remove = useDeleteTask()
+
+  const dismissUndo = useCallback(() => setUndo(null), [])
+
+  const onDelete = useCallback(
+    (task: Task) => {
+      remove.mutate(task.id, {
+        // The row's position travels with the undo, so restoring puts it back
+        // where it was rather than at the end of the list.
+        onSuccess: ({ undoToken }, _id, context) => {
+          setUndo({ undoToken, task, index: context?.index ?? 0 })
+        },
+      })
+    },
+    [remove],
+  )
 
   return (
     <main className={styles.page}>
@@ -42,7 +71,21 @@ function TasksPage() {
           </p>
         </div>
       ) : (
-        <TaskList tasks={tasks} />
+        <TaskList tasks={tasks} onDelete={onDelete} />
+      )}
+
+      {undo && (
+        <UndoToast
+          // A fresh toast per delete, so the countdown restarts without
+          // resetting state from inside an effect.
+          key={undo.undoToken}
+          message="Task deleted"
+          onExpire={dismissUndo}
+          onUndo={() => {
+            restore.mutate(undo)
+            setUndo(null)
+          }}
+        />
       )}
     </main>
   )
