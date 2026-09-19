@@ -1,0 +1,26 @@
+.notFound {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 18vh var(--space-6) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.title {
+  font: var(--text-title1);
+  color: var(--ink);
+}
+
+.body {
+  font: var(--text-body);
+  color: var(--meta);
+}
+
+.link {
+  font: var(--text-small);
+  font-weight: 600;
+  color: var(--rust-700);
+  padding: var(--space-2) 0;
+}

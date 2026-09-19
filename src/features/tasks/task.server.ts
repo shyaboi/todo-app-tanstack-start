@@ -11,23 +11,23 @@ import type { Task } from './task.types'
 /* The application boundary. Everything above this line is untrusted input;
    everything below it is parsed and trusted.
 
-   `.inputValidator` runs the same Zod schema the form uses, so a request that
+   `.validator` runs the same Zod schema the form uses, so a request that
    bypasses the UI is held to exactly the same rules (system design 4, 15,
    Failure Check 4). The service converts driver errors into AppError before
    they can reach a browser. */
 
 export const listTodos = createServerFn({ method: 'GET' })
-  .inputValidator(listTasksInput)
+  .validator(listTasksInput)
   .handler(({ data }): Promise<Task[]> => service.listTasks(data))
 
 export const createTodo = createServerFn({ method: 'POST' })
-  .inputValidator(createTaskInput)
+  .validator(createTaskInput)
   .handler(({ data }): Promise<Task> => service.createTask(data))
 
 export const updateTodo = createServerFn({ method: 'POST' })
-  .inputValidator(updateTaskInput)
+  .validator(updateTaskInput)
   .handler(({ data }): Promise<Task> => service.updateTask(data.id, data.patch))
 
 export const deleteTodo = createServerFn({ method: 'POST' })
-  .inputValidator(deleteTaskInput)
+  .validator(deleteTaskInput)
   .handler(({ data }): Promise<{ id: string }> => service.deleteTask(data.id))

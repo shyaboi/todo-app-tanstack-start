@@ -15,6 +15,11 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
     command: 'npm run dev',
+    // Tests write real rows, so they get their own database and never touch
+    // the seeded demo data. CI supplies both of these itself.
+    env: {
+      MONGODB_DB: process.env.MONGODB_DB ?? 'tasker_e2e',
+    },
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

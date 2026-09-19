@@ -75,6 +75,22 @@ jobs:
   e2e:
     name: critical path
     runs-on: ubuntu-latest
+
+    # CI gets its own throwaway database. The project's Atlas cluster is never
+    # reachable from CI: no credential is stored here, so none can leak from
+    # here, and a test run cannot touch real data (PLAN.md 4.7).
+    services:
+      mongo:
+        image: mongo:8
+        ports: ['27017:27017']
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand(1).ok'"
+          --health-interval 10s --health-timeout 5s --health-retries 10
+
+    env:
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: tasker_e2e
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -83,6 +99,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - run: npm run seed
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
         if: failure()

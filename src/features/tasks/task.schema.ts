@@ -37,11 +37,8 @@ export const dueAtSchema = z.iso.datetime({
 })
 
 /** `undefined` and `null` both mean "no value" at the boundary; store null. */
-const nullableOptional = <T extends z.ZodTypeAny>(schema: T) =>
-  schema.nullish().transform((v) => (v === undefined ? null : v)) as z.ZodType<
-    z.output<T> | null,
-    z.input<T> | null | undefined
-  >
+const nullableOptional = <T extends z.ZodType>(schema: T) =>
+  schema.nullish().transform((v) => (v === undefined ? null : v))
 
 /*  strictObject, so an unknown field is an error rather than silently dropped.
     This is what "accept only allowed fields" means in practice, and it is why

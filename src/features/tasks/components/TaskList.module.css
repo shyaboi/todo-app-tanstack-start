@@ -1,0 +1,78 @@
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-row);
+  box-shadow: var(--shadow-row);
+  transition: border-color var(--motion-fast) var(--ease);
+}
+
+.row:hover {
+  border-color: var(--border);
+}
+
+/* Only the title truncates. Metadata never collapses, so scanning stays
+   reliable -- the design is explicit about this. */
+.title {
+  flex: 1;
+  min-width: 0;
+  font: var(--text-row);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+
+.listName {
+  font: var(--text-small);
+  color: var(--meta);
+  flex-shrink: 0;
+}
+
+.due {
+  font: var(--text-small);
+  color: var(--meta);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.overdue {
+  color: var(--rust-700);
+  font-weight: 600;
+}
+
+.done .title {
+  color: var(--meta);
+  text-decoration: line-through;
+}
+
+/* An optimistic row, not yet confirmed by the server. */
+.pending {
+  opacity: 0.6;
+}
+
+.saving {
+  font: var(--text-small);
+  color: var(--meta);
+  flex-shrink: 0;
+}
