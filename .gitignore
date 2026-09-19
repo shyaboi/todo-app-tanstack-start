@@ -1,0 +1,38 @@
+# ─── Secrets ──────────────────────────────────────────────────────────────────
+# This block lands in the very first commit, before any env file can exist.
+# A secret committed once is in the history forever; ordering is the mitigation.
+.env
+.env.*
+!.env.example
+
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Build output ─────────────────────────────────────────────────────────────
+dist/
+.output/
+.nitro/
+.tanstack/
+.vite/
+*.tsbuildinfo
+
+# ─── Test output ──────────────────────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.cache/
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# ─── Editor / OS ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
