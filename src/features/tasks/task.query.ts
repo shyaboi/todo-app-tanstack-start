@@ -3,8 +3,20 @@ import {
   useMutation,
   useQueryClient,
 } from '@tanstack/react-query'
-import { createTodo, listTodos, updateTodo } from './task.server'
-import { patchTask, replaceTask } from './task.cache'
+import {
+  createTodo,
+  deleteTodo,
+  listTodos,
+  restoreTodo,
+  updateTodo,
+} from './task.server'
+import {
+  indexOfTask,
+  insertTaskAt,
+  patchTask,
+  removeTask,
+  replaceTask,
+} from './task.cache'
 import type { Task } from './task.types'
 import type { CreateTaskInput } from './task.schema'
 import type { TaskPatchInput } from './task.schema'
@@ -123,6 +135,77 @@ export function useUpdateTask() {
       queryClient.setQueryData<Task[]>(tasksQueryKey, (old) =>
         replaceTask(old ?? [], updated),
       )
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
+    },
+  })
+}
+
+export function useDeleteTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (id: string) => deleteTodo({ data: { id } }),
+
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: tasksQueryKey })
+      const previous = queryClient.getQueryData<Task[]>(tasksQueryKey) ?? []
+
+      /* The position is captured, not just the task. Restoring to the end of
+         the list would silently reorder it on every undo, so an undo would
+         not actually undo. */
+      const index = indexOfTask(previous, id)
+      const task = previous[index]
+
+      queryClient.setQueryData<Task[]>(tasksQueryKey, removeTask(previous, id))
+
+      return { previous, task, index }
+    },
+
+    onError: (_error, _id, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(tasksQueryKey, context.previous)
+      }
+    },
+
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
+    },
+  })
+}
+
+/** Everything needed to put the row back exactly where it was. */
+export interface RestoreArgs {
+  undoToken: string
+  task: Task
+  index: number
+}
+
+export function useRestoreTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ undoToken }: RestoreArgs) =>
+      restoreTodo({ data: { undoToken } }),
+
+    // Put it back where it was, immediately -- an undo that takes a round trip
+    // to appear does not feel like an undo.
+    onMutate: async ({ task, index }: RestoreArgs) => {
+      await queryClient.cancelQueries({ queryKey: tasksQueryKey })
+      const previous = queryClient.getQueryData<Task[]>(tasksQueryKey) ?? []
+      queryClient.setQueryData<Task[]>(
+        tasksQueryKey,
+        insertTaskAt(previous, task, index),
+      )
+      return { previous }
+    },
+
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(tasksQueryKey, context.previous)
+      }
     },
 
     onSettled: () => {

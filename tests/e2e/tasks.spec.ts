@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test'
-import { gotoHydrated } from './helpers'
+import {
+  createTask,
+  gotoHydrated,
+  uniqueTitle,
+  waitForServerAck,
+} from './helpers'
 
 /* The vertical slice: loader -> listTodos -> MongoDB -> TaskList ->
    createTodo -> cache -> UI. Proves every architectural layer is connected
    before any secondary feature is built. */
 
-const unique = () =>
-  `e2e probe ${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+const unique = () => uniqueTitle('e2e probe')
 
 test('server-renders the task list from the database', async ({ page }) => {
   const response = await page.goto('/')
@@ -26,11 +30,13 @@ test('creates a task, and it survives a reload', async ({ page }) => {
   const title = unique()
   await gotoHydrated(page)
 
+  const saved = waitForServerAck(page, title)
   await page.getByLabel('Task title').fill(title)
   await page.getByRole('button', { name: 'Add task' }).click()
 
   // Appears immediately -- the optimistic row.
   await expect(page.getByText(title)).toBeVisible()
+  await saved
 
   // AC7: still there after a full round trip to the database.
   await page.reload()
@@ -41,8 +47,10 @@ test('trims the title through the real server path', async ({ page }) => {
   const title = unique()
   await gotoHydrated(page)
 
+  const saved = waitForServerAck(page, title)
   await page.getByLabel('Task title').fill(`   ${title}   `)
   await page.getByRole('button', { name: 'Add task' }).click()
+  await saved
   await page.reload()
 
   // Exact-match locator: a stored title with surrounding spaces would fail.
@@ -70,55 +78,137 @@ test('the list is a real list, not divs pretending to be one', async ({
 })
 
 test('toggles status with the checkbox, and it persists', async ({ page }) => {
+  const title = unique()
   await gotoHydrated(page)
+  const row = await createTask(page, title)
 
-  const row = page.getByRole('listitem').filter({ hasText: 'Draft the README' })
+  /* .click(), not .check(): the checkbox is controlled by React and driven by
+     an async mutation, so its DOM state briefly reads back as the pre-update
+     value. .check() treats that as "the click did not work" and fails. */
   const checkbox = row.getByRole('checkbox')
   await expect(checkbox).not.toBeChecked()
 
-  await checkbox.check()
+  const saved = waitForServerAck(page, title)
+  await checkbox.click()
   await expect(checkbox).toBeChecked()
+  await saved
 
+  // The assertion that matters: it reached the database, not just the cache.
   await page.reload()
-  const after = page
-    .getByRole('listitem')
-    .filter({ hasText: 'Draft the README' })
-    .getByRole('checkbox')
-  await expect(after).toBeChecked()
-
-  // Put it back, so the suite can run repeatedly against the same data.
-  await after.uncheck()
+  await expect(
+    page.getByRole('listitem').filter({ hasText: title }).getByRole('checkbox'),
+  ).toBeChecked()
 })
 
 test('walks status forward through the pill', async ({ page }) => {
+  const title = unique()
   await gotoHydrated(page)
-  const row = page.getByRole('listitem').filter({ hasText: 'Seed demo data' })
+  const row = await createTask(page, title)
 
   // The accessible name states the current status and the outcome, so this
   // also asserts the control is announced usefully.
   await row
-    .getByRole('button', { name: /To do\. Change to In progress/ })
+    .getByRole('button', { name: /To do. Change to In progress/ })
     .click()
   await expect(row.getByRole('button', { name: /In progress/ })).toBeVisible()
 
-  await row
-    .getByRole('button', { name: /In progress\. Change to Done/ })
-    .click()
+  await row.getByRole('button', { name: /In progress. Change to Done/ }).click()
   await expect(
-    row.getByRole('button', { name: /Done\. Change to To do/ }),
+    row.getByRole('button', { name: /Done. Change to To do/ }),
   ).toBeVisible()
 
   await page.reload()
   await expect(
     page
       .getByRole('listitem')
-      .filter({ hasText: 'Seed demo data' })
+      .filter({ hasText: title })
       .getByRole('button', { name: /Done/ }),
   ).toBeVisible()
+})
 
-  await page
-    .getByRole('listitem')
-    .filter({ hasText: 'Seed demo data' })
-    .getByRole('button', { name: /Done\. Change to To do/ })
-    .click()
+test('deletes a task behind a confirmation, and undo brings it back', async ({
+  page,
+}) => {
+  const title = unique()
+  await gotoHydrated(page)
+
+  await page.getByLabel('Task title').fill(title)
+  await page.getByRole('button', { name: 'Add task' }).click()
+  await expect(page.getByText(title, { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: `Delete "${title}"` }).click()
+
+  // A real dialog: the browser exposes it as one.
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('You can undo for 8 seconds')
+
+  await dialog.getByRole('button', { name: 'Delete' }).click()
+  await expect(page.getByText(title, { exact: true })).toHaveCount(0)
+
+  /* Undo writes to the cache optimistically and to the database in the
+     background. Reloading without waiting for that request races it, and the
+     page would come back from the server before the restore had landed. */
+  const restored = waitForServerAck(page, title)
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await expect(page.getByText(title, { exact: true })).toBeVisible()
+  await restored
+
+  // The real proof: the restore reached the database, not just the cache.
+  await page.reload()
+  await expect(page.getByText(title, { exact: true })).toBeVisible()
+})
+
+test('cancelling the dialog keeps the task and restores focus', async ({
+  page,
+}) => {
+  const title = unique()
+  await gotoHydrated(page)
+  const row = await createTask(page, title)
+  const trigger = row.getByRole('button', { name: /^Delete "/ })
+
+  await trigger.click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
+
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await expect(page.getByText(title, { exact: true })).toBeVisible()
+  // The design is explicit: focus returns to the row on close.
+  await expect(trigger).toBeFocused()
+})
+
+test('escape closes the dialog without deleting', async ({ page }) => {
+  const title = unique()
+  await gotoHydrated(page)
+  const row = await createTask(page, title)
+
+  await row.getByRole('button', { name: /^Delete "/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).not.toBeVisible()
+  await expect(page.getByText(title, { exact: true })).toBeVisible()
+})
+
+test('a deleted task stays deleted once the undo window closes', async ({
+  page,
+}) => {
+  const title = unique()
+  await gotoHydrated(page)
+  await createTask(page, title)
+
+  await page.getByRole('button', { name: `Delete "${title}"` }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
+
+  // Let the 8-second window lapse rather than clicking Undo.
+  await expect(
+    page.getByRole('button', { name: 'Undo', exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Undo', exact: true }),
+  ).toHaveCount(0, {
+    timeout: 12_000,
+  })
+
+  await page.reload()
+  await expect(page.getByText(title, { exact: true })).toHaveCount(0)
 })

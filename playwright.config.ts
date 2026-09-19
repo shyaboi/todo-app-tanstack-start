@@ -14,12 +14,12 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'npm run dev',
-    // Tests write real rows, so they get their own database and never touch
-    // the seeded demo data. CI supplies both of these itself.
-    env: {
-      MONGODB_DB: process.env.MONGODB_DB ?? 'tasker_e2e',
-    },
+    /* --mode e2e, not an `env` override. Vite loads .env into the server
+       process itself and it wins over anything Playwright passes in, so the
+       env option here silently did nothing and tests wrote to the real
+       database. A mode-specific .env.e2e is the one thing Vite ranks above
+       .env. CI has no .env at all and sets the variables directly. */
+    command: 'npm run dev:e2e',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

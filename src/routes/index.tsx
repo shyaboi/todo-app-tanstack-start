@@ -1,7 +1,14 @@
+import { useCallback, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 
-import { tasksQuery } from '~/features/tasks/task.query'
+import { UndoToast } from '~/shared/components/UndoToast'
+import {
+  tasksQuery,
+  useDeleteTask,
+  useRestoreTask,
+} from '~/features/tasks/task.query'
+import type { Task } from '~/features/tasks/task.types'
 import { TaskList } from '~/features/tasks/components/TaskList'
 import { TaskComposer } from '~/features/tasks/components/TaskComposer'
 import styles from './index.module.css'
@@ -15,10 +22,36 @@ export const Route = createFileRoute('/')({
   component: TasksPage,
 })
 
+/* What the undo toast needs to reverse a delete. Held as local component
+   state, not in a store: it is ephemeral UI, and losing it on reload is the
+   correct behaviour (PLAN.md 4.1). */
+interface PendingUndo {
+  undoToken: string
+  task: Task
+  index: number
+}
+
 function TasksPage() {
   // Already resolved by the loader, so this paints on the server with data.
   // No useEffect, no fetch waterfall.
   const { data: tasks = [] } = useQuery(tasksQuery)
+
+  const [undo, setUndo] = useState<PendingUndo | null>(null)
+  const remove = useDeleteTask()
+  const restore = useRestoreTask()
+
+  const onDelete = useCallback(
+    (task: Task) => {
+      remove.mutate(task.id, {
+        onSuccess: ({ undoToken }, _id, context) => {
+          setUndo({ undoToken, task, index: context?.index ?? 0 })
+        },
+      })
+    },
+    [remove],
+  )
+
+  const dismissUndo = useCallback(() => setUndo(null), [])
 
   return (
     <main className={styles.page}>
@@ -42,7 +75,19 @@ function TasksPage() {
           </p>
         </div>
       ) : (
-        <TaskList tasks={tasks} />
+        <TaskList tasks={tasks} onDelete={onDelete} />
+      )}
+
+      {undo && (
+        <UndoToast
+          key={undo.undoToken}
+          message="Task deleted"
+          onExpire={dismissUndo}
+          onUndo={() => {
+            restore.mutate(undo)
+            setUndo(null)
+          }}
+        />
       )}
     </main>
   )
