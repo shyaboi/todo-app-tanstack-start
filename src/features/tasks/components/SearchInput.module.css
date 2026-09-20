@@ -1,0 +1,51 @@
+.wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.icon {
+  position: absolute;
+  left: var(--space-3);
+  color: var(--meta);
+  pointer-events: none;
+}
+
+.input {
+  width: 100%;
+  height: var(--control-height);
+  padding: 0 var(--space-10) 0 calc(var(--space-3) * 2 + 16px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  font: var(--text-body);
+  color: var(--ink);
+  transition: border-color var(--motion-fast) var(--ease);
+}
+
+.input::placeholder {
+  color: var(--meta);
+}
+
+.input:hover {
+  border-color: var(--border-strong);
+}
+
+/* The browser's own clear button duplicates Escape and does not go through
+   our state; hidden so there is one way to clear. */
+.input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.hint {
+  position: absolute;
+  right: var(--space-3);
+  pointer-events: none;
+}
+
+/* The hint is decoration; once you are typing it is in the way. */
+.input:focus + .hint {
+  display: none;
+}

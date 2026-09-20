@@ -361,3 +361,27 @@ describe('hasActiveFilters', () => {
     expect(hasActiveFilters(filters)).toBe(expected)
   })
 })
+
+describe('list filter', () => {
+  const tasks = [
+    task({ id: 'ship', listId: 'ship-v1' }),
+    task({ id: 'docs', listId: 'docs' }),
+    task({ id: 'none', listId: null }),
+  ]
+
+  it('keeps only the chosen list', () => {
+    expect(filterTasks(tasks, { list: 'docs' }, NOW).map((t) => t.id)).toEqual([
+      'docs',
+    ])
+  })
+
+  it('never matches an unlisted task to a list filter', () => {
+    expect(
+      filterTasks(tasks, { list: 'ship-v1' }, NOW).map((t) => t.id),
+    ).toEqual(['ship'])
+  })
+
+  it('counts as an active filter', () => {
+    expect(hasActiveFilters({ list: 'docs' })).toBe(true)
+  })
+})

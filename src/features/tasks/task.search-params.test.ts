@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { parseTaskSearch, toFilters } from './task.search-params'
+import {
+  joinStatus,
+  parseTaskSearch,
+  splitStatus,
+  toFilters,
+} from './task.search-params'
 
 /* Everything here arrives from a URL, which anyone can type. The contract is
    that a bad link shows the unfiltered list rather than an error page: every
@@ -17,7 +22,7 @@ describe('parseTaskSearch', () => {
       }),
     ).toEqual({
       q: 'focus',
-      status: ['todo', 'doing'],
+      status: 'todo,doing',
       due: 'week',
       sort: 'relevance',
     })
@@ -30,7 +35,7 @@ describe('parseTaskSearch', () => {
   it('drops an unknown status value but keeps the valid ones', () => {
     // One bad token must not discard the whole filter.
     expect(parseTaskSearch({ status: 'todo,archived,done' })).toEqual({
-      status: ['todo', 'done'],
+      status: 'todo,done',
     })
   })
 
@@ -41,13 +46,20 @@ describe('parseTaskSearch', () => {
 
   it('deduplicates repeated statuses', () => {
     expect(parseTaskSearch({ status: 'todo,todo,doing' })).toEqual({
-      status: ['todo', 'doing'],
+      status: 'todo,doing',
     })
   })
 
   it('tolerates whitespace around comma-separated values', () => {
     expect(parseTaskSearch({ status: ' todo , doing ' })).toEqual({
-      status: ['todo', 'doing'],
+      status: 'todo,doing',
+    })
+  })
+
+  it('accepts the array form a value written from code arrives as', () => {
+    // The router JSON-parses search values, so an array can reach the parser.
+    expect(parseTaskSearch({ status: ['todo', 'nope', 'done'] })).toEqual({
+      status: 'todo,done',
     })
   })
 
@@ -61,6 +73,18 @@ describe('parseTaskSearch', () => {
     expect(parseTaskSearch({ sort: 'alphabetical' })).toEqual({})
   })
 
+  it('survives several bad parameters at once and keeps the good one', () => {
+    // The exact link the E2E suite throws at the page.
+    expect(
+      parseTaskSearch({
+        status: 'archived',
+        due: 'someday',
+        sort: 'alphabetical',
+        q: 'focus',
+      }),
+    ).toEqual({ q: 'focus' })
+  })
+
   it('treats due=any as no filter, so it never appears in the URL', () => {
     expect(parseTaskSearch({ due: 'any' })).toEqual({})
   })
@@ -71,19 +95,20 @@ describe('parseTaskSearch', () => {
     expect(parseTaskSearch({ q: '' })).toEqual({})
   })
 
-  it('caps an absurdly long query rather than handing it to a regex', () => {
-    const result = parseTaskSearch({ q: 'a'.repeat(5000) })
-    // Over the limit falls back to no query at all.
-    expect(result).toEqual({})
+  it('keeps a query that happens to look like a number or a boolean', () => {
+    // The router parses `?q=123` to the number 123; the search must survive.
+    expect(parseTaskSearch({ q: 123 })).toEqual({ q: '123' })
+    expect(parseTaskSearch({ q: true })).toEqual({ q: 'true' })
   })
 
-  it('ignores parameters that are not strings', () => {
-    // Router search can carry parsed JSON; an object where a string belongs is
-    // exactly the shape an operator injection would take.
+  it('caps an absurdly long query rather than handing it to a regex', () => {
+    // Over the limit falls back to no query at all.
+    expect(parseTaskSearch({ q: 'a'.repeat(5000) })).toEqual({})
+  })
+
+  it('ignores an object where a string belongs', () => {
+    // Exactly the shape an operator injection would have to take.
     expect(parseTaskSearch({ q: { $ne: null } })).toEqual({})
-    expect(parseTaskSearch({ status: ['todo', 'nope'] })).toEqual({
-      status: ['todo'],
-    })
     expect(parseTaskSearch({ due: 42 })).toEqual({})
   })
 
@@ -95,10 +120,11 @@ describe('parseTaskSearch', () => {
       { due: {} },
       { sort: [] },
       { q: 1, status: true, due: Symbol('x'), sort: () => 'due' },
+      null,
+      'not even an object',
+      42,
     ]) {
-      expect(() =>
-        parseTaskSearch(raw as Record<string, unknown>),
-      ).not.toThrow()
+      expect(() => parseTaskSearch(raw)).not.toThrow()
     }
   })
 
@@ -109,19 +135,48 @@ describe('parseTaskSearch', () => {
       },
     )
   })
+
+  it('accepts a known list and falls back on an unknown one', () => {
+    expect(parseTaskSearch({ list: 'docs' })).toEqual({ list: 'docs' })
+    expect(parseTaskSearch({ list: 'made-up', q: 'keep' })).toEqual({
+      q: 'keep',
+    })
+  })
+})
+
+describe('splitStatus / joinStatus', () => {
+  it('round-trip', () => {
+    expect(splitStatus(joinStatus(['doing', 'todo']))).toEqual([
+      'doing',
+      'todo',
+    ])
+  })
+
+  it('an empty selection joins to undefined, so the key leaves the URL', () => {
+    expect(joinStatus([])).toBeUndefined()
+    expect(splitStatus(undefined)).toEqual([])
+  })
+
+  it('deduplicates in both directions', () => {
+    expect(joinStatus(['todo', 'todo'])).toBe('todo')
+    expect(splitStatus('todo,todo')).toEqual(['todo'])
+  })
 })
 
 describe('toFilters', () => {
-  it('passes validated search through unchanged', () => {
-    const search = {
+  it('derives the status array the filter functions expect', () => {
+    expect(
+      toFilters({ q: 'focus', status: 'todo,doing', due: 'week' }),
+    ).toEqual({
       q: 'focus',
-      status: ['todo' as const],
-      due: 'week' as const,
-    }
-    expect(toFilters(search)).toEqual({
-      q: 'focus',
-      status: ['todo'],
+      status: ['todo', 'doing'],
       due: 'week',
+      sort: undefined,
+      list: undefined,
     })
+  })
+
+  it('gives an empty status array for no status, which the filters read as no filter', () => {
+    expect(toFilters({}).status).toEqual([])
   })
 })

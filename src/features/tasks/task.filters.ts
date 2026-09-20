@@ -1,5 +1,5 @@
 import { listName } from './task.types'
-import type { Task, TaskStatus } from './task.types'
+import type { ListId, Task, TaskStatus } from './task.types'
 
 /* Derived data, derived. The canonical query holds the unfiltered list and
    these functions compute what is on screen from it, so there is never a second
@@ -19,6 +19,7 @@ export interface TaskFilters {
   status?: readonly TaskStatus[] | undefined
   due?: DueFilter | undefined
   sort?: SortOrder | undefined
+  list?: ListId | undefined
 }
 
 /** Local midnight today. The design treats Overdue and Today as separate. */
@@ -73,6 +74,11 @@ export function matchesDue(task: Task, due: DueFilter, now: Date): boolean {
       // inside, and hiding what is late within it would be a strange answer.
       return dueAt <= weekEnd.getTime()
     }
+    default:
+      /* Unreachable by the type, reachable from a URL. A value the type does
+         not know must mean "no filter": returning undefined here would read
+         as false and silently exclude every task. */
+      return true
   }
 }
 
@@ -82,7 +88,7 @@ export function filterTasks(
   filters: TaskFilters,
   now: Date,
 ): Task[] {
-  const { q, status, due } = filters
+  const { q, status, due, list } = filters
 
   return tasks.filter((task) => {
     // An empty status array means "no status filter", not "match nothing" --
@@ -90,6 +96,7 @@ export function filterTasks(
     if (status && status.length > 0 && !status.includes(task.status))
       return false
     if (due && !matchesDue(task, due, now)) return false
+    if (list && task.listId !== list) return false
     if (q && !matchesQuery(task, q)) return false
     return true
   })
@@ -241,6 +248,7 @@ export function hasActiveFilters(filters: TaskFilters): boolean {
   return Boolean(
     filters.q?.trim() ||
     (filters.status && filters.status.length > 0) ||
-    (filters.due && filters.due !== 'any'),
+    (filters.due && filters.due !== 'any') ||
+    filters.list,
   )
 }

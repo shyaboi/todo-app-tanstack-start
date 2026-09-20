@@ -28,6 +28,11 @@ export function getRouter() {
     context: { queryClient },
     defaultPreload: 'intent',
     scrollRestoration: true,
+    /* Keep only what validateSearch returns. Without this the router retains
+       unknown search params and merges the validated ones over them, so a
+       parameter the schema dropped can still reach a component. Strict also
+       canonicalises a bad link: the junk leaves the address bar. */
+    search: { strict: true },
   })
 
   // Dehydrates the cache into the SSR payload and rehydrates on the client.

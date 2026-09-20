@@ -13,13 +13,18 @@ import {
 import type { PendingUndo } from '~/features/tasks/task.query'
 import type { Task } from '~/features/tasks/task.types'
 import {
+  countByStatus,
   filterTasks,
   hasActiveFilters,
+  hiddenByStatus,
   sortTasks,
 } from '~/features/tasks/task.filters'
 import { parseTaskSearch, toFilters } from '~/features/tasks/task.search-params'
+import type { TaskSearch } from '~/features/tasks/task.search-params'
 import { TaskList } from '~/features/tasks/components/TaskList'
 import { TaskComposer } from '~/features/tasks/components/TaskComposer'
+import { SearchInput } from '~/features/tasks/components/SearchInput'
+import { TaskFilters } from '~/features/tasks/components/TaskFilters'
 import styles from './index.module.css'
 
 export const Route = createFileRoute('/')({
@@ -49,7 +54,30 @@ function TasksPage() {
   // No useEffect, no fetch waterfall.
   const { data: tasks = [] } = useQuery(tasksQuery)
   const search = Route.useSearch()
+  const navigate = Route.useNavigate()
   const filters = toFilters(search)
+
+  /* Every filter change is a navigation, so the URL stays the one owner.
+     Clicking a chip PUSHES: a chosen filter is a place you can go back from.
+     Typing is different. The design says a query is state, not a route change,
+     and Back should return to the unfiltered list rather than step through
+     every keystroke -- so a search PUSHES once when it starts and REPLACES
+     while it is refined or cleared. One history entry per search, not one per
+     keystroke, and not zero: replacing from the very first keystroke would
+     overwrite the entry you came from and leave nothing to go back to. */
+  function updateSearch(patch: Partial<TaskSearch>, replace = false) {
+    void navigate({
+      search: (prev) => {
+        const next: TaskSearch = { ...prev, ...patch }
+        // A cleared filter leaves the URL entirely rather than lingering as `?q=`.
+        for (const key of Object.keys(next) as (keyof TaskSearch)[]) {
+          if (next[key] === undefined) delete next[key]
+        }
+        return next
+      },
+      replace,
+    })
+  }
 
   /* Derived, not stored: the canonical list is the cache, this is what the URL
      says to show from it. `now` is read once per render and only ever compared
@@ -96,6 +124,25 @@ function TasksPage() {
       <AccountBar />
 
       <TaskComposer />
+
+      <div className={styles.toolbar}>
+        <SearchInput
+          value={search.q ?? ''}
+          onChange={(q) =>
+            updateSearch({ q: q || undefined }, search.q !== undefined)
+          }
+        />
+      </div>
+
+      {tasks.length > 0 && (
+        <TaskFilters
+          search={search}
+          counts={countByStatus(tasks)}
+          total={tasks.length}
+          hidden={hiddenByStatus(tasks, filters, now)}
+          onChange={(patch) => updateSearch(patch)}
+        />
+      )}
 
       {tasks.length === 0 ? (
         // First run. Not an error: there is simply nothing here yet.
