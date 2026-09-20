@@ -9,6 +9,9 @@ export default tseslint.config(
     ignores: [
       'dist/**',
       '.output/**',
+      // Nitro's generated types and its Vercel build tree are build output.
+      '.nitro/**',
+      '.vercel/**',
       'coverage/**',
       'playwright-report/**',
       'test-results/**',
