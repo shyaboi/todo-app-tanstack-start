@@ -79,7 +79,8 @@ test('the list is a real list, not divs pretending to be one', async ({
   await signIn(page)
   await gotoHydrated(page)
   // Fails if TaskList is refactored into divs -- the design's a11y contract.
-  await expect(page.getByRole('list')).toBeVisible()
+  // Grouped by due date, so there are several lists; any one of them will do.
+  await expect(page.getByRole('list').first()).toBeVisible()
   expect(await page.getByRole('listitem').count()).toBeGreaterThan(0)
 })
 
@@ -111,24 +112,35 @@ test('walks status forward through the pill', async ({ page }) => {
   await gotoHydrated(page)
   const row = await createTask(page, title)
 
-  // The accessible name states the current status and the outcome, so this
-  // also asserts the control is announced usefully.
+  /* Each step waits for the server to acknowledge the write before the next.
+     The pill updates optimistically, so the screen is ahead of the database;
+     a reload that arrives first aborts the request and the row comes back
+     unchanged. Updates to one task are serialised, so each wait sees exactly
+     one response. */
+  const toDoing = waitForServerAck(page, title)
   await row
-    .getByRole('button', { name: /To do. Change to In progress/ })
+    .getByRole('button', { name: /To do\. Change to In progress/ })
     .click()
   await expect(row.getByRole('button', { name: /In progress/ })).toBeVisible()
+  await toDoing
 
-  await row.getByRole('button', { name: /In progress. Change to Done/ }).click()
+  const toDone = waitForServerAck(page, title)
+  await row
+    .getByRole('button', { name: /In progress\. Change to Done/ })
+    .click()
   await expect(
-    row.getByRole('button', { name: /Done. Change to To do/ }),
+    row.getByRole('button', { name: /Done\. Change to To do/ }),
   ).toBeVisible()
+  await toDone
 
   await page.reload()
+  // Asserted on the full name: a bare /Done/ would also match a row that is
+  // still "In progress. Change to Done".
   await expect(
     page
       .getByRole('listitem')
       .filter({ hasText: title })
-      .getByRole('button', { name: /Done/ }),
+      .getByRole('button', { name: /Done\. Change to To do/ }),
   ).toBeVisible()
 })
 

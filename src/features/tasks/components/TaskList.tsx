@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { PriorityPill } from '~/shared/components/Pill'
 import { Button } from '~/shared/components/Button'
 import { ConfirmDialog } from '~/shared/components/ConfirmDialog'
 import { isTempId, useUpdateTask } from '../task.query'
 import { listName } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
+import type { TaskGroup } from '../task.filters'
 import { AdvanceStatusButton, DoneCheckbox } from './StatusControl'
 import { InlineTitle } from './InlineTitle'
 import styles from './TaskList.module.css'
@@ -164,3 +165,62 @@ const dueFormat = new Intl.DateTimeFormat('en-GB', {
 function formatDue(iso: string): string {
   return dueFormat.format(new Date(iso))
 }
+
+/* The design's list view: sections by due date, each with its own heading and
+   count. One <ul> per group rather than one list with visual dividers, so a
+   screen reader announces "Overdue, list, 1 item" and the count in the heading
+   can never disagree with the rows -- both come from the same TaskGroup. */
+export function TaskGroups({
+  groups,
+  onDelete,
+  now,
+}: {
+  groups: TaskGroup[]
+  onDelete: (task: Task) => void
+  now: Date
+}) {
+  return (
+    <div className={styles.groups}>
+      {groups.map((group) => (
+        <GroupSection
+          key={group.key}
+          group={group}
+          onDelete={onDelete}
+          now={now}
+        />
+      ))}
+    </div>
+  )
+}
+
+function GroupSection({
+  group,
+  onDelete,
+  now,
+}: {
+  group: TaskGroup
+  onDelete: (task: Task) => void
+  now: Date
+}) {
+  const headingId = useId()
+  return (
+    <section className={styles.group} aria-labelledby={headingId}>
+      <h2 id={headingId} className={styles.groupHeading}>
+        {/* "Today · Fri 19 Sep", as the design labels it. */}
+        {group.key === 'today'
+          ? `Today · ${todayFormat.format(now)}`
+          : group.label}
+        <span className={styles.groupCount}>{group.tasks.length}</span>
+      </h2>
+      <TaskList tasks={group.tasks} onDelete={onDelete} />
+    </section>
+  )
+}
+
+// Locale pinned for the same reason as formatDue: the server and the client
+// must produce the same string or hydration disagrees.
+const todayFormat = new Intl.DateTimeFormat('en-GB', {
+  weekday: 'short',
+  day: 'numeric',
+  month: 'short',
+})

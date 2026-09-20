@@ -96,3 +96,29 @@
     opacity: 1;
   }
 }
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.groupHeading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding: 0 var(--space-1);
+  font: var(--text-title2);
+  color: var(--ink);
+}
+
+.groupCount {
+  font: var(--text-mono);
+  color: var(--meta);
+}

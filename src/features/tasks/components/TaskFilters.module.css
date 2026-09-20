@@ -1,0 +1,105 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-row);
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.legend {
+  font: var(--text-micro);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--meta);
+  /* A legend renders above its fieldset by default; float keeps it inline
+     with the chips it labels. */
+  float: left;
+  width: 88px;
+  padding: 0;
+  margin-inline-end: var(--space-2);
+  line-height: 28px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font: var(--text-small);
+  font-weight: 500;
+  color: var(--secondary);
+  transition:
+    background-color var(--motion-fast) var(--ease),
+    border-color var(--motion-fast) var(--ease),
+    color var(--motion-fast) var(--ease);
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+/* Selected is ink on a sunken fill, not a colour: the pressed state has to
+   survive both the rust and pine surfaces and read without colour vision. */
+.pressed {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+.pressed:hover {
+  border-color: var(--ink);
+  color: var(--surface);
+}
+
+.count {
+  font: var(--text-mono);
+  font-weight: 500;
+  color: var(--meta);
+}
+
+.pressed .count {
+  color: var(--border);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  min-height: var(--control-height-sm);
+}
+
+.hidden {
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+.inlineAction {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--rust-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
