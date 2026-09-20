@@ -28,6 +28,8 @@ export interface RowControls {
   onConfirmingChange: (id: string, confirming: boolean) => void
   /** Raised on confirm. The page owns the mutation, so it survives the row. */
   onDelete: (task: Task) => void
+  /** Open the detail panel -- the visible control for ↵. */
+  onOpen: (task: Task) => void
 }
 
 /* A real list of real list items. Rows are not divs pretending to be buttons
@@ -122,6 +124,28 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
         {(creating || update.isPending) && (
           <span className={styles.saving}>Saving…</span>
         )}
+
+        <Button
+          variant="ghost"
+          size="small"
+          iconOnly
+          className={styles.rowAction}
+          disabled={creating}
+          aria-label={`Open "${task.title}"`}
+          title="Open · ↵"
+          onClick={() => controls.onOpen(task)}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M5 12h14M13 6l6 6-6 6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Button>
 
         <Button
           variant="ghost"

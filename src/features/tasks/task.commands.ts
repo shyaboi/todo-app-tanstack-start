@@ -20,6 +20,9 @@ export interface TaskCommandContext {
   requestDelete: (task: Task) => void
   duplicate: (task: Task) => void
   moveSelection: (delta: 1 | -1) => void
+  /** Open the detail panel; and open it with focus on the due date. */
+  openTask: (task: Task) => void
+  editDue: (task: Task) => void
   /** The design's cascade: close a panel, then clear search, then drop selection. */
   escape: () => void
   focusComposer: () => void
@@ -41,7 +44,6 @@ export const UNBUILT_BINDINGS = [
   { keys: '⇧→', label: 'Move a card to the next status (Sprint 6)' },
   { keys: 'G B', label: 'Go to the board (Sprint 6)' },
   { keys: 'V', label: 'Switch between list and board (Sprint 6)' },
-  { keys: 'D', label: 'Edit the due date (Sprint 6)' },
 ] as const
 
 /**
@@ -112,16 +114,23 @@ export function buildTaskCommands(ctx: TaskCommandContext): Command[] {
       run: onSelected(ctx.startEdit),
     },
     {
-      // The design's ↵ opens the detail panel, which arrives with Sprint 6.
-      // Until then it is the same as E, and hidden so it is not listed twice.
       id: 'open-task',
       label: 'Open the selected task',
+      hint: 'Every field, in a panel beside the list',
       keys: '↵',
       group: 'Selected task',
       when: 'selection',
       enabled: has,
-      hidden: true,
-      run: onSelected(ctx.startEdit),
+      run: onSelected(ctx.openTask),
+    },
+    {
+      id: 'edit-due',
+      label: 'Edit the due date',
+      keys: 'D',
+      group: 'Selected task',
+      when: 'selection',
+      enabled: has,
+      run: onSelected(ctx.editDue),
     },
     {
       id: 'duplicate',

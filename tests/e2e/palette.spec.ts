@@ -95,17 +95,21 @@ test('# scopes to lists and filters by the chosen one', async ({ page }) => {
   for (const row of await rows.all()) await expect(row).toContainText('Docs')
 })
 
-test('picking a task from the palette selects its row', async ({ page }) => {
+test('picking a task from the palette opens it', async ({ page }) => {
   await signIn(page)
   await gotoHydrated(page)
   const box = await open(page)
   await box.fill('vercel preview')
   await page.keyboard.press('Enter')
-  const row = page
-    .getByRole('listitem')
-    .filter({ hasText: 'Set up Vercel preview deploys' })
-  await expect(row).toBeFocused()
-  await expect(row).toHaveAttribute('aria-current', 'true')
+  await expect(page).toHaveURL(/\/t\/[0-9a-f]{24}/)
+  const panel = page.getByRole('complementary', { name: 'Task details' })
+  await expect(panel.getByLabel('Title')).toHaveValue(
+    'Set up Vercel preview deploys',
+  )
+  // The list is still there behind it, filters untouched.
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'Set up Vercel preview' }),
+  ).toBeVisible()
 })
 
 test('! sets priority on the selected task', async ({ page }) => {

@@ -177,6 +177,22 @@ function ListLayout() {
         status: 'todo',
       }),
     moveSelection: selection.move,
+    /* Opening a task is a navigation, so it is deep-linkable and Back closes
+       it. The list layout stays mounted underneath (PLAN.md 4.2). The focus
+       hint rides in history state: it is intent, not address. */
+    openTask: (task) =>
+      void navigate({
+        to: '/t/$todoId',
+        params: { todoId: task.id },
+        search: (prev) => prev,
+      }),
+    editDue: (task) =>
+      void navigate({
+        to: '/t/$todoId',
+        params: { todoId: task.id },
+        search: (prev) => prev,
+        state: { focus: 'dueAt' },
+      }),
     escape: () => {
       // Dialogs and text fields handle their own Escape before this runs
       // (design rule: close a panel, then clear search, then drop selection).
@@ -219,6 +235,12 @@ function ListLayout() {
     onConfirmingChange: (id, confirming) =>
       setConfirmingId(confirming ? id : null),
     onDelete,
+    onOpen: (task) =>
+      void navigate({
+        to: '/t/$todoId',
+        params: { todoId: task.id },
+        search: (prev) => prev,
+      }),
   }
 
   return (
@@ -304,14 +326,16 @@ function ListLayout() {
             commands={commands}
             tasks={tasks}
             canSetPriority={selected !== null}
-            onSelectTask={(id) => {
-              /* A task hidden by the current filters is still findable here, so
-               picking it clears them; the row then exists to be selected. Once
-               the detail route lands (Sprint 6) this becomes a navigation. */
-              if (!ordered.some((t) => t.id === id)) goTo({ sort: search.sort })
-              selection.select(id)
-              selection.focusRow(id)
-            }}
+            /* Picking a task opens it: the panel is the natural home for a task
+               you went looking for, and it works whether or not the current
+               filters would have shown the row. */
+            onSelectTask={(id) =>
+              void navigate({
+                to: '/t/$todoId',
+                params: { todoId: id },
+                search: (prev) => prev,
+              })
+            }
             onFilterList={(listId) => updateSearch({ list: listId })}
             onSetPriority={(priority) => {
               if (selected) {

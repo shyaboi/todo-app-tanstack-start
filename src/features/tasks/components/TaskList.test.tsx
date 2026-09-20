@@ -56,6 +56,7 @@ function controls(over: Partial<RowControls> = {}): RowControls {
     onEditingChange: vi.fn(),
     onConfirmingChange: vi.fn(),
     onDelete: vi.fn(),
+    onOpen: vi.fn(),
     ...over,
   }
 }

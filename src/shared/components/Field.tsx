@@ -1,5 +1,9 @@
 import { useId } from 'react'
-import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import type {
+  InputHTMLAttributes,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react'
 import styles from './Field.module.css'
 
 type Common = {
@@ -9,24 +13,49 @@ type Common = {
   /** Presence marks the field invalid and moves the message into the a11y tree. */
   error?: string
   required?: boolean
+  /**
+   * A fixed id, for the one case a generated one cannot serve: a shortcut that
+   * has to land focus on this exact control from elsewhere on the page.
+   */
+  id?: string
 }
 
 export type FieldProps = Common &
   Omit<InputHTMLAttributes<HTMLInputElement>, 'id' | 'className'> & {
     multiline?: false
+    select?: false
   }
 
 export type TextareaFieldProps = Common &
   Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id' | 'className'> & {
     multiline: true
+    select?: false
+  }
+
+export type SelectFieldProps = Common &
+  Omit<SelectHTMLAttributes<HTMLSelectElement>, 'id' | 'className'> & {
+    select: true
+    multiline?: false
   }
 
 /* A real <label for>, not a placeholder standing in for one. `useId` keeps the
    association stable across SSR and hydration, which a module-level counter
    would not. */
-export function Field(props: FieldProps | TextareaFieldProps) {
-  const { label, description, error, required, multiline, ...rest } = props
-  const id = useId()
+export function Field(
+  props: FieldProps | TextareaFieldProps | SelectFieldProps,
+) {
+  const {
+    label,
+    description,
+    error,
+    required,
+    multiline,
+    select,
+    id: fixedId,
+    ...rest
+  } = props
+  const generatedId = useId()
+  const id = fixedId ?? generatedId
   const describedBy =
     [description && `${id}-desc`, error && `${id}-err`]
       .filter(Boolean)
@@ -58,6 +87,12 @@ export function Field(props: FieldProps | TextareaFieldProps) {
           {...shared}
           className={`${shared.className} ${styles.textarea}`}
           {...(rest as TextareaHTMLAttributes<HTMLTextAreaElement>)}
+        />
+      ) : select ? (
+        <select
+          {...shared}
+          className={`${shared.className} ${styles.select}`}
+          {...(rest as SelectHTMLAttributes<HTMLSelectElement>)}
         />
       ) : (
         <input

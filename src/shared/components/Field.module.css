@@ -50,6 +50,10 @@
   line-height: 22px;
 }
 
+.select {
+  cursor: pointer;
+}
+
 .invalid {
   border-color: var(--rust-600);
   background: var(--rust-50);

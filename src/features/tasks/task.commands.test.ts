@@ -29,6 +29,8 @@ function ctx(over: Partial<TaskCommandContext> = {}): TaskCommandContext {
     requestDelete: vi.fn(),
     duplicate: vi.fn(),
     moveSelection: vi.fn(),
+    openTask: vi.fn(),
+    editDue: vi.fn(),
     escape: vi.fn(),
     focusComposer: vi.fn(),
     focusSearch: vi.fn(),
@@ -55,10 +57,10 @@ describe('the registry as a whole', () => {
   })
 
   it('registers nothing for bindings that have no home yet', () => {
-    // Board keys wait for Sprint 6; ⌘Z and ⇧1…3 are cut. A no-op command in
-    // the palette would be a promise the app does not keep.
+    // Board keys wait for 6.4; ⌘Z and ⇧1…3 are cut. A no-op command in the
+    // palette would be a promise the app does not keep.
     const keys = buildTaskCommands(ctx()).map((c) => c.keys)
-    for (const absent of ['←', '→', '⇧→', 'G B', 'V', 'D', '⌘Z', '⇧⌘Z']) {
+    for (const absent of ['←', '→', '⇧→', 'G B', 'V', '⌘Z', '⇧⌘Z']) {
       expect(keys).not.toContain(absent)
     }
   })
@@ -138,7 +140,7 @@ describe('selected-task commands', () => {
   it('↵ is an alias for edit until the detail panel exists, and is not listed twice', () => {
     const open = byId(ctx({ selected: task }), 'open-task')
     expect(open.keys).toBe('↵')
-    expect(open.hidden).toBe(true)
+    expect(open.hidden).toBeFalsy()
   })
 })
 
