@@ -11,6 +11,25 @@ const resolveFromHere = createRequire(import.meta.url).resolve
 export default defineConfig({
   // Pinned so the Playwright webServer URL, the README and CI all agree.
   server: { port: 3000 },
+  build: {
+    /* Fonts are never inlined, whatever their size.
+
+       Vite inlines any asset under 4 KB as a `data:` URI, and two of
+       fontsource's Cyrillic subsets are small enough to qualify -- 1.6 KB of
+       Hanken Grotesk and 2 KB of JetBrains Mono went into the stylesheet as
+       base64. That was invisible until the CSP landed in Sprint 9, and then
+       `font-src 'self'` blocked the app's own fonts, with two console errors
+       on every page load.
+
+       The obvious fix is to add `data:` to font-src. This is the better one:
+       the policy stays as tight as it can be, and an inlined font is a bad
+       trade anyway -- it cannot be cached on its own and it pads a
+       render-blocking stylesheet with bytes for glyphs this UI never draws.
+       Returning undefined for everything else keeps Vite's normal judgement
+       for images and the like. */
+    assetsInlineLimit: (filePath: string) =>
+      /\.(woff2?|ttf|otf|eot)$/i.test(filePath) ? false : undefined,
+  },
   // Vite 8 resolves tsconfig `paths` natively; no plugin needed.
   resolve: { tsconfigPaths: true },
   plugins: [

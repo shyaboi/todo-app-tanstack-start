@@ -178,6 +178,44 @@ describe('the built server', () => {
     }
   })
 
+  it('ships nothing the CSP will refuse to load', async () => {
+    /* A policy is only as good as its agreement with the bundle, and these
+       two drifted apart the moment the CSP landed: Vite inlines any asset
+       under 4 KB, two of the font subsets qualified, and `font-src 'self'`
+       then blocked the app's own fonts on every page load. Green tests, two
+       console errors, nobody any the wiser until someone opened devtools.
+
+       So this asserts the pair rather than either half -- for each `data:`
+       scheme the built stylesheets actually use, the directive that governs
+       it has to permit `data:`. */
+    const csp = (await fetch(base + '/')).headers.get(
+      'content-security-policy',
+    )!
+    const directive = (name: string) =>
+      csp
+        .split(';')
+        .find((d) => d.trim().startsWith(name))
+        ?.trim() ?? ''
+
+    const governs: Record<string, string> = {
+      font: 'font-src',
+      image: 'img-src',
+    }
+
+    for (const file of clientFiles().filter((f) => f.endsWith('.css'))) {
+      const css = readFileSync(join(ASSETS, file), 'latin1')
+      for (const [kind, name] of Object.entries(governs)) {
+        if (!css.includes(`data:${kind === 'image' ? 'image' : 'font'}`))
+          continue
+        expect(`${file} uses data: ${kind}s, ${name}`).toBe(
+          directive(name).includes('data:')
+            ? `${file} uses data: ${kind}s, ${name}`
+            : `${file} uses data: ${kind}s, but ${name} forbids them`,
+        )
+      }
+    }
+  })
+
   it('refuses a server function called from another origin', async () => {
     /* The cookie is SameSite=Lax, which stops a cross-site form post
        (PLAN.md 4.8). This is the second lock on the same door, and it is the
