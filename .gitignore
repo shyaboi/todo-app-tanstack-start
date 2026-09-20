@@ -14,6 +14,9 @@ node_modules/
 dist/
 .output/
 .nitro/
+# Nitro writes the Vercel Build Output API tree here; it contains the bundled
+# server, so it must never be committed.
+.vercel/
 .tanstack/
 .vite/
 *.tsbuildinfo
