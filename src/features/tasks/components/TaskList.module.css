@@ -131,3 +131,47 @@
   background: var(--sunken);
   border-color: var(--border-strong);
 }
+
+/* Swipe-to-done: the row follows the finger (a transform set inline while
+   the pointer is down) and snaps back on release. pan-y leaves vertical
+   scrolling to the browser; only horizontal movement reaches the handlers. */
+.row {
+  touch-action: pan-y;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .row {
+    transition:
+      border-color var(--motion-fast) var(--ease),
+      transform var(--motion-fast) var(--ease);
+  }
+}
+
+/* ── Phone: the row keeps its shape but the actions no longer wait for a
+   hover that will never come, and the meta wraps under the title. */
+@media (max-width: 640px) {
+  .row {
+    flex-wrap: wrap;
+    min-height: 48px;
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .title {
+    flex-basis: calc(100% - 44px);
+    white-space: normal;
+  }
+
+  .meta {
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    padding-inline-start: 30px;
+  }
+}
+
+/* The selection tint is --sunken, and --meta only clears 4.5:1 on --surface
+   (4.32 here). The row's small text steps up one shade while selected. */
+.selected .listName,
+.selected .due:not(.overdue),
+.selected .saving {
+  color: var(--secondary);
+}

@@ -85,6 +85,97 @@
   text-align: right;
 }
 
+/* A list row: the link, plus actions that appear when reached. */
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.row .link {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowActions {
+  position: absolute;
+  inset-inline-end: var(--space-1);
+  display: flex;
+  gap: 2px;
+}
+
+/* Quiet until reached. Opacity, not display, so the buttons stay in the tab
+   order -- nothing here is pointer-only. */
+.rowAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-kbd);
+  background: transparent;
+  color: var(--secondary);
+  opacity: 0;
+}
+
+.row:hover .rowAction,
+.row:focus-within .rowAction {
+  opacity: 1;
+}
+
+.rowAction:hover:not(:disabled) {
+  background: var(--sunken);
+  color: var(--ink);
+}
+
+.rowAction:disabled {
+  opacity: 0;
+}
+
+/* The count would sit under the actions; hide it while they are shown. */
+.row:hover .count,
+.row:focus-within .count {
+  opacity: 0;
+}
+
+@media (hover: none) {
+  /* No hover on touch, so the actions are always shown. */
+  .rowAction {
+    opacity: 1;
+  }
+
+  .row .count {
+    opacity: 0;
+  }
+}
+
+.renaming {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 2px var(--space-1);
+}
+
+.renameInput {
+  height: var(--control-height-sm);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-kbd);
+  background: var(--surface);
+  font: var(--text-row);
+  color: var(--ink);
+  min-width: 0;
+}
+
+.renameError {
+  font: var(--text-small);
+  font-weight: 600;
+  color: var(--rust-700);
+  padding-inline-start: var(--space-2);
+}
+
 .active .count {
   color: var(--ink);
 }
@@ -120,5 +211,12 @@
 
   .link {
     min-height: var(--control-height-sm);
+  }
+}
+
+/* Phone: the bottom navigation carries the same links. */
+@media (max-width: 640px) {
+  .nav {
+    display: none;
   }
 }

@@ -69,15 +69,90 @@
   color: var(--meta);
 }
 
+/* A real button, styled as the quiet label it used to be. */
 .scope {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font: var(--text-small);
+  color: var(--meta);
+  cursor: pointer;
 }
 
-.scopeActive {
+.scope:hover {
+  color: var(--ink);
+  background: var(--sunken);
+}
+
+.scopeActive,
+.scope[aria-pressed='true'] {
   color: var(--ink);
   font-weight: 600;
+  border-color: var(--border);
+}
+
+.escHint {
+  display: inline-flex;
+}
+
+/* The Close button exists for the sheet; where Escape exists, it does not. */
+.close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--secondary);
+  font: var(--text-body);
+}
+
+/* ── The sheet (PLAN.md 7.3). At phone widths the palette rises from the
+   bottom edge, full width, with 48px rows and no keyboard hints -- the same
+   registry, reached by touch. */
+@media (max-width: 640px) {
+  .dialog {
+    margin: auto 0 0;
+    width: 100%;
+    max-width: none;
+  }
+
+  .panel {
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    max-height: 88dvh;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .list {
+    max-height: none;
+    flex: 1;
+  }
+
+  .option {
+    min-height: 48px;
+  }
+
+  .scope {
+    min-height: 40px;
+  }
+
+  .scopeHint,
+  .resultLabel,
+  .escHint,
+  .footer {
+    display: none;
+  }
+
+  .close {
+    display: inline-flex;
+  }
 }
 
 .scopePrefix {

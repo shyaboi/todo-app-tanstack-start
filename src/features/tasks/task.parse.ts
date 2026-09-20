@@ -1,6 +1,8 @@
 import { en } from 'chrono-node'
-import { LISTS, PRIORITIES, TASK_STATUSES } from './task.types'
-import type { ListId, Priority, TaskStatus } from './task.types'
+import { findListByName } from '~/features/lists/list.types'
+import type { List } from '~/features/lists/list.types'
+import { PRIORITIES, TASK_STATUSES } from './task.types'
+import type { Priority, TaskStatus } from './task.types'
 
 /* The composer's token grammar (PLAN.md D9, FE design "Composer"):
 
@@ -15,7 +17,9 @@ import type { ListId, Priority, TaskStatus } from './task.types'
    the server never sees "tomorrow" (design validation contract). */
 
 export type ParsedToken =
-  | { kind: 'list'; raw: string; listId: ListId }
+  | { kind: 'list'; raw: string; listId: string; name: string }
+  /** A #name that matches none of the owner's lists: created on submit. */
+  | { kind: 'new-list'; raw: string; name: string }
   | { kind: 'priority'; raw: string; priority: Priority }
   | { kind: 'status'; raw: string; status: TaskStatus }
   | { kind: 'date'; raw: string; dueAt: string }
@@ -23,19 +27,15 @@ export type ParsedToken =
 export interface ParsedComposer {
   /** What is left once every recognised token is removed, whitespace tidied. */
   title: string
-  listId: ListId | null
+  listId: string | null
+  /** Set instead of listId when the #name is new; the composer creates it first. */
+  newList: string | null
   priority: Priority | null
   status: TaskStatus | null
   /** ISO instant. */
   dueAt: string | null
   /** In the order they appeared, for the preview under the input. */
   tokens: ParsedToken[]
-}
-
-const LIST_BY_KEY = new Map<string, ListId>()
-for (const list of LISTS) {
-  LIST_BY_KEY.set(list.id.toLowerCase(), list.id)
-  LIST_BY_KEY.set(list.name.toLowerCase(), list.id)
 }
 
 /* A recognised token stands alone: preceded by start or whitespace, and not
@@ -54,9 +54,14 @@ const DATE_LEAD = /\s*\b(on|at|by|due|until|before|for)\s*$/i
 const DATE_WORD =
   /\d|\b(today|tomorrow|tonight|yesterday|next|this|noon|midnight|morning|afternoon|evening|eod|end of|weekend|mon|tue|wed|thu|fri|sat|sun)/i
 
-export function parseComposer(input: string, now: Date): ParsedComposer {
+export function parseComposer(
+  input: string,
+  now: Date,
+  lists: readonly List[] = [],
+): ParsedComposer {
   const tokens: ParsedToken[] = []
-  let listId: ListId | null = null
+  let listId: string | null = null
+  let newList: string | null = null
   let priority: Priority | null = null
   let status: TaskStatus | null = null
 
@@ -68,10 +73,17 @@ export function parseComposer(input: string, now: Date): ParsedComposer {
       const key = word.toLowerCase()
 
       if (sigil === '#') {
-        const id = LIST_BY_KEY.get(key)
-        if (!id || listId) return whole
-        listId = id
-        tokens.push({ kind: 'list', raw, listId: id })
+        if (listId || newList) return whole
+        /* Hyphens stand in for spaces, so #ship-v1 reaches "Ship v1". */
+        const name = word.replace(/-/g, ' ')
+        const found = findListByName(lists, name)
+        if (found) {
+          listId = found.id
+          tokens.push({ kind: 'list', raw, listId: found.id, name: found.name })
+        } else {
+          newList = name
+          tokens.push({ kind: 'new-list', raw, name })
+        }
         return lead
       }
       if (sigil === '!') {
@@ -107,6 +119,7 @@ export function parseComposer(input: string, now: Date): ParsedComposer {
   return {
     title: rest.replace(/\s+/g, ' ').trim(),
     listId,
+    newList,
     priority,
     status,
     dueAt,

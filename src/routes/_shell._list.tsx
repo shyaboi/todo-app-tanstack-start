@@ -28,12 +28,14 @@ import { parseTaskSearch, toFilters } from '~/features/tasks/task.search-params'
 import { viewTitle } from '~/features/tasks/task.views'
 import type { TaskSearch } from '~/features/tasks/task.search-params'
 import { buildTaskCommands } from '~/features/tasks/task.commands'
+import { listsQuery } from '~/features/lists/list.query'
 import {
   bootRedirectsToBoard,
   rememberView,
 } from '~/features/tasks/task.lastView'
 import { KeyboardMap } from '~/shared/components/KeyboardMap'
 import { ModeHint } from '~/features/tasks/components/ModeHint'
+import { BottomNav } from '~/features/tasks/components/BottomNav'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
 import { TaskGroups, TaskList } from '~/features/tasks/components/TaskList'
 import type { RowControls } from '~/features/tasks/components/TaskList'
@@ -72,6 +74,7 @@ function ListLayout() {
   // Already resolved by the shell's loader, so this paints on the server with
   // data. No useEffect, no fetch waterfall.
   const { data: tasks = [] } = useQuery(tasksQuery)
+  const { data: lists = [] } = useQuery(listsQuery)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const filters = toFilters(search)
@@ -111,7 +114,7 @@ function ListLayout() {
   const now = new Date()
   const sort = filters.sort ?? DEFAULT_SORT
   const visibleTasks = sortTasks(
-    filterTasks(tasks, filters, now),
+    filterTasks(tasks, filters, now, lists),
     sort,
     filters.q,
   )
@@ -267,7 +270,7 @@ function ListLayout() {
           {/* The view is the page's subject, so it is the h1. The brand lives in
             the sidebar as a link, where a heading would only mislead a screen
             reader about what this page is. */}
-          <h1 className={styles.title}>{viewTitle(search)}</h1>
+          <h1 className={styles.title}>{viewTitle(search, lists)}</h1>
           {/* Announced politely: a changed count is the answer to a filter change,
             and a screen reader user otherwise gets nothing back for it. */}
           <p className={styles.count} aria-live="polite">
@@ -298,7 +301,7 @@ function ListLayout() {
             search={search}
             counts={countByStatus(tasks)}
             total={tasks.length}
-            hidden={hiddenByStatus(tasks, filters, now)}
+            hidden={hiddenByStatus(tasks, filters, now, lists)}
             onChange={(patch) => updateSearch(patch)}
           />
         )}
@@ -322,6 +325,8 @@ function ListLayout() {
         ) : (
           <TaskList tasks={visibleTasks} controls={controls} />
         )}
+
+        <BottomNav onActions={() => setPaletteOpen(true)} />
 
         <ModeHint
           mode={{
@@ -347,6 +352,7 @@ function ListLayout() {
           <CommandPalette
             commands={commands}
             tasks={tasks}
+            lists={lists}
             canSetPriority={selected !== null}
             /* Picking a task opens it: the panel is the natural home for a task
                you went looking for, and it works whether or not the current

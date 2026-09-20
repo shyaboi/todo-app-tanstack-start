@@ -18,6 +18,7 @@ import {
   replaceTask,
 } from './task.cache'
 import type { Task } from './task.types'
+import { reportFailure } from '~/shared/lib/reportFailure'
 import type { CreateTaskInput } from './task.schema'
 import type { TaskPatchInput } from './task.schema'
 
@@ -43,7 +44,7 @@ export const isTempId = (id: string) => id.startsWith(TEMP_PREFIX)
 export function useCreateTask() {
   const queryClient = useQueryClient()
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: (input: CreateTaskInput) => createTodo({ data: input }),
 
     /* Optimistic, with the temp id handled deliberately -- which is the
@@ -77,10 +78,13 @@ export function useCreateTask() {
 
     // Roll back to the exact snapshot. Never leave optimistic state without
     // a rollback path (system design 7, Failure Check 2).
-    onError: (_error, _input, context) => {
+    onError: (error, input, context) => {
       if (context?.previous) {
         queryClient.setQueryData(tasksQueryKey, context.previous)
       }
+      // Rolled back first, so "your change was rolled back" is already true
+      // by the time it is said. Retry re-sends exactly what failed.
+      reportFailure(error, () => mutation.mutate(input))
     },
 
     // Swap the temp row for the server's, in place, so the row does not jump.
@@ -95,6 +99,7 @@ export function useCreateTask() {
       void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
     },
   })
+  return mutation
 }
 
 /* Scoped per task id. A mutationKey alone does NOT serialise anything in
@@ -107,7 +112,7 @@ export function useCreateTask() {
 export function useUpdateTask(taskId: string) {
   const queryClient = useQueryClient()
 
-  return useMutation({
+  const mutation = useMutation({
     scope: { id: `task-${taskId}` },
     mutationFn: ({ id, patch }: { id: string; patch: TaskPatchInput }) =>
       updateTodo({ data: { id, patch } }),
@@ -127,10 +132,13 @@ export function useUpdateTask(taskId: string) {
 
     // Restore the exact snapshot. Not "undo the patch" -- the snapshot is the
     // only thing guaranteed to be what was there before.
-    onError: (_error, _vars, context) => {
+    onError: (error, vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(tasksQueryKey, context.previous)
       }
+      // Rolled back first, so "your change was rolled back" is already true
+      // by the time it is said. Retry re-sends exactly what failed.
+      reportFailure(error, () => mutation.mutate(vars))
     },
 
     // Reconcile with the server's version, which owns updatedAt.
@@ -144,6 +152,7 @@ export function useUpdateTask(taskId: string) {
       void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
     },
   })
+  return mutation
 }
 
 /** Everything the undo toast needs to reverse a delete. */
@@ -165,7 +174,7 @@ export interface PendingUndo {
 export function useDeleteTask() {
   const queryClient = useQueryClient()
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: (id: string) => deleteTodo({ data: { id } }),
 
     onMutate: async (id) => {
@@ -183,16 +192,21 @@ export function useDeleteTask() {
       return { previous, task, index }
     },
 
-    onError: (_error, _id, context) => {
+    onError: (error, _id, context) => {
       if (context?.previous) {
         queryClient.setQueryData(tasksQueryKey, context.previous)
       }
+      // No Retry: a retried delete would run without the page-level
+      // callback that arms the undo, and a delete with no undo is not the
+      // delete the design promises. The row is back; delete it again.
+      reportFailure(error)
     },
 
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
     },
   })
+  return mutation
 }
 
 /** Everything needed to put the row back exactly where it was. */
@@ -205,7 +219,7 @@ export interface RestoreArgs {
 export function useRestoreTask() {
   const queryClient = useQueryClient()
 
-  return useMutation({
+  const mutation = useMutation({
     mutationFn: ({ undoToken }: RestoreArgs) =>
       restoreTodo({ data: { undoToken } }),
 
@@ -221,14 +235,18 @@ export function useRestoreTask() {
       return { previous }
     },
 
-    onError: (_error, _vars, context) => {
+    onError: (error, vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(tasksQueryKey, context.previous)
       }
+      // Rolled back first, so "your change was rolled back" is already true
+      // by the time it is said. Retry re-sends exactly what failed.
+      reportFailure(error, () => mutation.mutate(vars))
     },
 
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: tasksQueryKey })
     },
   })
+  return mutation
 }

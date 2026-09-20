@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { LIST_IDS, TASK_STATUSES } from './task.types'
-import type { ListId, TaskStatus } from './task.types'
+import { TASK_STATUSES } from './task.types'
+import type { TaskStatus } from './task.types'
 import type { DueFilter, SortOrder, TaskFilters } from './task.filters'
 
 /* The URL is the source of truth for what the list is showing, so a result set
@@ -72,7 +72,12 @@ export const taskSearchSchema = z.object({
 
   sort: z.enum(['due', 'created', 'relevance']).optional().catch(undefined),
 
-  list: z.enum(LIST_IDS).optional().catch(undefined),
+  // An id, not a name: names are the owner's to change, ids are stable.
+  list: z
+    .string()
+    .regex(/^[0-9a-f]{24}$/i)
+    .optional()
+    .catch(undefined),
 })
 
 /** What the route hands to components. Every field optional and already valid. */
@@ -82,7 +87,7 @@ export interface TaskSearch {
   status?: string | undefined
   due?: Exclude<DueFilter, 'any'> | undefined
   sort?: SortOrder | undefined
-  list?: ListId | undefined
+  list?: string | undefined
 }
 
 /**

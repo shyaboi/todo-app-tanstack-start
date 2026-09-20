@@ -57,9 +57,16 @@
   max-width: 44ch;
 }
 
+/* Phone: tighter gutters, and room at the bottom for the fixed navigation
+   so the last row is never underneath it. Fluid to 360px. */
 @media (max-width: 640px) {
   .page {
-    padding: var(--space-8) var(--space-4);
+    padding: var(--space-5) var(--space-4) calc(var(--space-16) + 56px);
+  }
+
+  .title {
+    font-size: 32px;
+    line-height: 36px;
   }
 }
 

@@ -87,3 +87,19 @@
     margin: 0 var(--space-6) var(--space-8);
   }
 }
+
+/* ── Phone: a sheet over the list, above the bottom navigation, with a Close
+   button for a hand that has no Escape key (PLAN.md 7.3). */
+@media (max-width: 640px) {
+  .panel {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 45;
+    margin: 0;
+    max-height: 88dvh;
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    border-bottom: 0;
+    box-shadow: var(--shadow-dialog);
+    padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
+  }
+}

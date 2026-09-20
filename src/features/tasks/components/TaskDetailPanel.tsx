@@ -6,15 +6,16 @@ import { Kbd } from '~/shared/components/Kbd'
 import { isTempId, useUpdateTask } from '../task.query'
 import { notesSchema, titleSchema } from '../task.schema'
 import type { TaskPatchInput } from '../task.schema'
+import { useQuery } from '@tanstack/react-query'
+import { listsQuery } from '~/features/lists/list.query'
 import {
-  LISTS,
   PRIORITIES,
   PRIORITY_LABEL,
   STATUS_LABEL,
   TASK_STATUSES,
   displayRef,
 } from '../task.types'
-import type { ListId, Priority, Task, TaskStatus } from '../task.types'
+import type { Priority, Task, TaskStatus } from '../task.types'
 import styles from './TaskDetailPanel.module.css'
 
 /** Fixed, so the D shortcut can land focus here from the list. */
@@ -48,6 +49,7 @@ export function TaskDetailPanel({
   initialFocus?: 'dueAt'
 }) {
   const update = useUpdateTask(task.id)
+  const { data: lists = [] } = useQuery(listsQuery)
   const panelRef = useRef<HTMLElement>(null)
   const headingId = useId()
 
@@ -217,12 +219,12 @@ export function TaskDetailPanel({
         error={errors.listId}
         onChange={(e) =>
           commit('listId', {
-            listId: e.target.value === '' ? null : (e.target.value as ListId),
+            listId: e.target.value === '' ? null : e.target.value,
           })
         }
       >
         <option value="">No list</option>
-        {LISTS.map((l) => (
+        {lists.map((l) => (
           <option key={l.id} value={l.id}>
             {l.name}
           </option>

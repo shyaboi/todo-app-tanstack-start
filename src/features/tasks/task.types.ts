@@ -29,27 +29,9 @@ export const PRIORITY_LABEL: Record<Priority, string> = {
   p3: 'P3 — Low',
 }
 
-/* Lists are a fixed vocabulary, not a collection. The design shows four, and
-   a `lists` collection with its own CRUD is premature here (system design 19).
-   Keeping it closed also means listId is server-validated against a known set
-   rather than being free user input. Creating lists from the composer is
-   therefore cut -- noted in the README. */
-export const LISTS = [
-  { id: 'ship-v1', name: 'Ship v1' },
-  { id: 'docs', name: 'Docs' },
-  { id: 'infra', name: 'Infra' },
-  { id: 'polish', name: 'Polish' },
-] as const
-
-export type ListId = (typeof LISTS)[number]['id']
-export const LIST_IDS = LISTS.map((l) => l.id) as unknown as readonly [
-  ListId,
-  ...ListId[],
-]
-
-export function listName(id: ListId | null): string | null {
-  return LISTS.find((l) => l.id === id)?.name ?? null
-}
+/* Lists were a fixed vocabulary of four until Sprint 7.4 (PLAN.md D14); they
+   are a per-owner collection now, in ~/features/lists. A task carries only
+   the id of its list, and looks the name up where it has the lists. */
 
 /**
  * What every server function returns and every component consumes.
@@ -71,7 +53,8 @@ export interface Task {
   /** ISO instant, or null. Server-owned format, resolved client-side. */
   dueAt: string | null
   priority: Priority
-  listId: ListId | null
+  /** The id of one of the owner's lists, or null. */
+  listId: string | null
   /** Server-owned. The client never supplies these. */
   createdAt: string
   updatedAt: string

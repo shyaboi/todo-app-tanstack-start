@@ -31,6 +31,11 @@ export function InlineTitle({
 
   // Guards against blur firing after Escape has already reverted.
   const cancelled = useRef(false)
+  /* Guards against blur firing DURING a commit: returning focus to the row
+     blurs the input while it is still mounted, and without this the blur
+     handler would run a second commit -- two saves of the same title, and a
+     focus move interrupted halfway. */
+  const closing = useRef(false)
 
   /* A fresh edit starts from the current title. Done as a render-time
      adjustment keyed on the prop changing, which React documents as the way
@@ -52,13 +57,22 @@ export function InlineTitle({
   useEffect(() => {
     if (!editing) return
     cancelled.current = false
+    closing.current = false
     const input = inputRef.current
     input?.focus()
     input?.select()
   }, [editing])
 
-  function commit() {
-    if (cancelled.current) return
+  /* Where focus goes when the field closes. A key (Enter, Escape) returns it
+     to the row, so the keyboard is where it was before E -- the same rule the
+     dialogs follow. A blur does not: the person clicked somewhere, and
+     dragging focus back from wherever that was would be the anti-pattern. */
+  function returnFocusToRow() {
+    inputRef.current?.closest<HTMLElement>('[data-task-row]')?.focus()
+  }
+
+  function commit(byKey: boolean) {
+    if (cancelled.current || closing.current) return
 
     // The same schema the server runs, so the form cannot accept something
     // the server would reject.
@@ -69,7 +83,9 @@ export function InlineTitle({
       return
     }
 
+    closing.current = true
     setError(null)
+    if (byKey) returnFocusToRow()
     onEditingChange(false)
     // Nothing changed: skip the round trip entirely.
     if (parsed.data !== task.title) onSave(parsed.data)
@@ -77,8 +93,10 @@ export function InlineTitle({
 
   function cancel() {
     cancelled.current = true
+    closing.current = true
     setError(null)
     setDraft(task.title)
+    returnFocusToRow()
     onEditingChange(false)
   }
 
@@ -113,11 +131,11 @@ export function InlineTitle({
           setDraft(e.target.value)
           if (error) setError(null)
         }}
-        onBlur={commit}
+        onBlur={() => commit(false)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
             e.preventDefault()
-            commit()
+            commit(true)
           } else if (e.key === 'Escape') {
             // preventDefault so the page-level Escape cascade stays out of it.
             e.preventDefault()

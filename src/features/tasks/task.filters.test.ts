@@ -32,12 +32,17 @@ function task(over: Partial<Task> & { id: string }): Task {
   }
 }
 
+/* List ids are ObjectIds now (PLAN.md D14); the names live in the lists
+   these functions are handed. */
+const SHIP = '64b0c0ffee0ddba11ad00001'
+const DOCS = '64b0c0ffee0ddba11ad00002'
+
 describe('matchesQuery', () => {
   const subject = task({
     id: 'a',
     title: 'Wire optimistic updates',
     notes: 'Snapshot the cache before applying',
-    listId: 'ship-v1',
+    listId: SHIP,
   })
 
   it('matches the title, case-insensitively', () => {
@@ -52,8 +57,13 @@ describe('matchesQuery', () => {
 
   it('matches the list name, not the list id', () => {
     // The person sees "Ship v1"; they should be able to search for what they see.
-    expect(matchesQuery(subject, 'Ship v1')).toBe(true)
-    expect(matchesQuery(subject, 'ship v1')).toBe(true)
+    const lists = [
+      { id: SHIP, name: 'Ship v1', createdAt: '2026-09-01T00:00:00.000Z' },
+    ]
+    expect(matchesQuery(subject, 'Ship v1', lists)).toBe(true)
+    expect(matchesQuery(subject, 'ship v1', lists)).toBe(true)
+    // Without the lists there is no name to match, and the id is not one.
+    expect(matchesQuery(subject, SHIP)).toBe(false)
   })
 
   it('does not match unrelated text', () => {
@@ -364,24 +374,24 @@ describe('hasActiveFilters', () => {
 
 describe('list filter', () => {
   const tasks = [
-    task({ id: 'ship', listId: 'ship-v1' }),
-    task({ id: 'docs', listId: 'docs' }),
+    task({ id: 'ship', listId: SHIP }),
+    task({ id: 'docs', listId: DOCS }),
     task({ id: 'none', listId: null }),
   ]
 
   it('keeps only the chosen list', () => {
-    expect(filterTasks(tasks, { list: 'docs' }, NOW).map((t) => t.id)).toEqual([
+    expect(filterTasks(tasks, { list: DOCS }, NOW).map((t) => t.id)).toEqual([
       'docs',
     ])
   })
 
   it('never matches an unlisted task to a list filter', () => {
-    expect(
-      filterTasks(tasks, { list: 'ship-v1' }, NOW).map((t) => t.id),
-    ).toEqual(['ship'])
+    expect(filterTasks(tasks, { list: SHIP }, NOW).map((t) => t.id)).toEqual([
+      'ship',
+    ])
   })
 
   it('counts as an active filter', () => {
-    expect(hasActiveFilters({ list: 'docs' })).toBe(true)
+    expect(hasActiveFilters({ list: DOCS })).toBe(true)
   })
 })

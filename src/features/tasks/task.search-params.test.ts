@@ -136,11 +136,12 @@ describe('parseTaskSearch', () => {
     )
   })
 
-  it('accepts a known list and falls back on an unknown one', () => {
-    expect(parseTaskSearch({ list: 'docs' })).toEqual({ list: 'docs' })
-    expect(parseTaskSearch({ list: 'made-up', q: 'keep' })).toEqual({
-      q: 'keep',
-    })
+  it('accepts a list id and falls back on anything that is not one', () => {
+    // Lists are the owner's own now (PLAN.md D14), so the URL carries an id
+    // rather than a name from a fixed vocabulary.
+    const id = '64b0c0ffee0ddba11ad00002'
+    expect(parseTaskSearch({ list: id })).toEqual({ list: id })
+    expect(parseTaskSearch({ list: 'docs', q: 'keep' })).toEqual({ q: 'keep' })
   })
 })
 

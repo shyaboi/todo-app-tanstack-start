@@ -281,7 +281,10 @@ async function guestIdToAdopt(): Promise<ObjectId | null> {
    viewer, and this reassigns tasks. */
 async function adoptGuestTasks(from: ObjectId, to: ObjectId): Promise<void> {
   const { reassignOwner } = await import('~/features/tasks/task.repo')
+  const { reassignListOwner } = await import('~/features/lists/list.repo')
   const movedTasks = await reassignOwner(from, to)
+  // A guest's lists come along with the tasks that point at them.
+  await reassignListOwner(from, to)
 
   // The guest row has served its purpose. Guarded on email being null so this
   // can never delete a claimed account.

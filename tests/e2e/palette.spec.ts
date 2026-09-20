@@ -95,7 +95,7 @@ test('# scopes to lists and filters by the chosen one', async ({ page }) => {
   const box = await open(page)
   await box.fill('# docs')
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/list=docs/)
+  await expect(page).toHaveURL(/list=[0-9a-f]{24}/)
   const rows = page.getByRole('listitem')
   await expect(rows.first()).toBeVisible()
   for (const row of await rows.all()) await expect(row).toContainText('Docs')

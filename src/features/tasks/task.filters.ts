@@ -1,5 +1,6 @@
-import { listName } from './task.types'
-import type { ListId, Task, TaskStatus } from './task.types'
+import { listName } from '~/features/lists/list.types'
+import type { List } from '~/features/lists/list.types'
+import type { Task, TaskStatus } from './task.types'
 
 /* Derived data, derived. The canonical query holds the unfiltered list and
    these functions compute what is on screen from it, so there is never a second
@@ -19,7 +20,7 @@ export interface TaskFilters {
   status?: readonly TaskStatus[] | undefined
   due?: DueFilter | undefined
   sort?: SortOrder | undefined
-  list?: ListId | undefined
+  list?: string | undefined
 }
 
 /** Local midnight today. The design treats Overdue and Today as separate. */
@@ -43,13 +44,19 @@ function endOfDay(now: Date): Date {
  * palette, where the candidate set is small and known; applied to a task list it
  * mostly produces confident wrong answers.
  */
-export function matchesQuery(task: Task, q: string): boolean {
+export function matchesQuery(
+  task: Task,
+  q: string,
+  lists: readonly List[] = [],
+): boolean {
   const needle = q.trim().toLowerCase()
   if (needle === '') return true
 
-  return [task.title, task.notes ?? '', listName(task.listId) ?? ''].some(
-    (field) => field.toLowerCase().includes(needle),
-  )
+  return [
+    task.title,
+    task.notes ?? '',
+    listName(lists, task.listId) ?? '',
+  ].some((field) => field.toLowerCase().includes(needle))
 }
 
 export function matchesDue(task: Task, due: DueFilter, now: Date): boolean {
@@ -87,6 +94,10 @@ export function filterTasks(
   tasks: readonly Task[],
   filters: TaskFilters,
   now: Date,
+  /* Needed only to match a list NAME: the task carries an id, and the person
+     searches for what they see. Defaulted, so a caller with no lists to hand
+     still filters on titles and notes. */
+  lists: readonly List[] = [],
 ): Task[] {
   const { q, status, due, list } = filters
 
@@ -97,7 +108,7 @@ export function filterTasks(
       return false
     if (due && !matchesDue(task, due, now)) return false
     if (list && task.listId !== list) return false
-    if (q && !matchesQuery(task, q)) return false
+    if (q && !matchesQuery(task, q, lists)) return false
     return true
   })
 }
@@ -231,6 +242,7 @@ export function hiddenByStatus(
   tasks: readonly Task[],
   filters: TaskFilters,
   now: Date,
+  lists: readonly List[] = [],
 ): number {
   if (!filters.status || filters.status.length === 0) return 0
 
@@ -238,8 +250,9 @@ export function hiddenByStatus(
     tasks,
     { ...filters, status: undefined },
     now,
+    lists,
   )
-  const withStatus = filterTasks(tasks, filters, now)
+  const withStatus = filterTasks(tasks, filters, now, lists)
   return withoutStatus.length - withStatus.length
 }
 

@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TASK_STATUSES, PRIORITIES, LIST_IDS } from './task.types'
+import { TASK_STATUSES, PRIORITIES } from './task.types'
 
 /* One schema module, imported by the form AND by the server function.
    That is the point: the client cannot show a state the server would reject,
@@ -22,7 +22,10 @@ export const notesSchema = z
 
 export const statusSchema = z.enum(TASK_STATUSES)
 export const prioritySchema = z.enum(PRIORITIES)
-export const listIdSchema = z.enum(LIST_IDS)
+/** A list's id: shape-checked here, ownership-checked in the service. */
+export const listIdSchema = z
+  .string()
+  .regex(/^[0-9a-f]{24}$/i, 'That is not a valid list id.')
 
 /** A Mongo ObjectId in hex. Rejects anything that could not be one. */
 export const taskIdSchema = z

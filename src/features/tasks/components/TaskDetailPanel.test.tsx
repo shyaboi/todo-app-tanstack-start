@@ -14,6 +14,17 @@ import type { Task } from '../task.types'
    no-op rather than a hole. */
 const updateTodo = vi.fn<(args: unknown) => Promise<Task>>()
 let client: QueryClient
+const DOCS = {
+  id: '64b0c0ffee0ddba11ad00002',
+  name: 'Docs',
+  createdAt: '2026-09-01T00:00:00.000Z',
+}
+vi.mock('~/features/lists/list.server', () => ({
+  listLists: () => Promise.resolve([DOCS]),
+  createList: vi.fn(),
+  renameList: vi.fn(),
+  deleteList: vi.fn(),
+}))
 vi.mock('../task.server', () => ({
   updateTodo: (args: unknown) => updateTodo(args),
   listTodos: () => Promise.resolve(client.getQueryData(['tasks']) ?? []),
@@ -24,6 +35,7 @@ vi.mock('../task.server', () => ({
 
 const { TaskDetailPanel } = await import('./TaskDetailPanel')
 const { tasksQuery, tasksQueryKey } = await import('../task.query')
+const { listsQueryKey } = await import('~/features/lists/list.query')
 
 const task: Task = {
   id: '64b0c0ffee0ddba11ad0c0de',
@@ -32,7 +44,7 @@ const task: Task = {
   status: 'todo',
   dueAt: null,
   priority: 'p2',
-  listId: 'docs',
+  listId: DOCS.id,
   createdAt: '2026-09-01T00:00:00.000Z',
   updatedAt: '2026-09-01T00:00:00.000Z',
 }
@@ -65,6 +77,7 @@ function setup(over: Partial<Task> = {}, initialFocus?: 'dueAt') {
     },
   })
   client.setQueryData(tasksQueryKey, [{ ...task, ...over }])
+  client.setQueryData(listsQueryKey, [DOCS])
   const onClose = vi.fn()
   const view = render(
     <QueryClientProvider client={client}>
@@ -93,7 +106,7 @@ describe('TaskDetailPanel', () => {
     expect(screen.getByLabelText('Title')).toHaveValue('Draft the README')
     expect(screen.getByLabelText('Status')).toHaveValue('todo')
     expect(screen.getByLabelText('Priority')).toHaveValue('p2')
-    expect(screen.getByLabelText('List')).toHaveValue('docs')
+    expect(screen.getByLabelText('List')).toHaveValue(DOCS.id)
     expect(screen.getByLabelText('Notes')).toHaveValue('hello')
     expect(screen.getByLabelText('Due')).not.toHaveValue('')
     expect(document.activeElement).toBe(

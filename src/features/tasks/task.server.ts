@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { ensureViewer } from '~/features/auth/auth.service'
+import { wire } from '~/server/boundary'
 import {
   createTaskInput,
   deleteTaskInput,
@@ -29,31 +30,39 @@ import type { Task } from './task.types'
 
 export const listTodos = createServerFn({ method: 'GET' })
   .validator(listTasksInput)
-  .handler(async ({ data }): Promise<Task[]> => {
-    const viewer = await ensureViewer()
-    return service.listTasks(viewer.userId, data)
-  })
+  .handler(({ data }): Promise<Task[]> =>
+    wire(async () => {
+      const viewer = await ensureViewer()
+      return service.listTasks(viewer.userId, data)
+    }),
+  )
 
 export const createTodo = createServerFn({ method: 'POST' })
   .validator(createTaskInput)
-  .handler(async ({ data }): Promise<Task> => {
-    const viewer = await ensureViewer()
-    return service.createTask(viewer.userId, data)
-  })
+  .handler(({ data }): Promise<Task> =>
+    wire(async () => {
+      const viewer = await ensureViewer()
+      return service.createTask(viewer.userId, data)
+    }),
+  )
 
 export const updateTodo = createServerFn({ method: 'POST' })
   .validator(updateTaskInput)
-  .handler(async ({ data }): Promise<Task> => {
-    const viewer = await ensureViewer()
-    return service.updateTask(viewer.userId, data.id, data.patch)
-  })
+  .handler(({ data }): Promise<Task> =>
+    wire(async () => {
+      const viewer = await ensureViewer()
+      return service.updateTask(viewer.userId, data.id, data.patch)
+    }),
+  )
 
 export const deleteTodo = createServerFn({ method: 'POST' })
   .validator(deleteTaskInput)
-  .handler(async ({ data }): Promise<{ id: string; undoToken: string }> => {
-    const viewer = await ensureViewer()
-    return service.deleteTask(viewer.userId, data.id)
-  })
+  .handler(({ data }): Promise<{ id: string; undoToken: string }> =>
+    wire(async () => {
+      const viewer = await ensureViewer()
+      return service.deleteTask(viewer.userId, data.id)
+    }),
+  )
 
 export const restoreTodo = createServerFn({ method: 'POST' })
   .validator(restoreTaskInput)

@@ -45,7 +45,7 @@ test('the h1 names the view, and the active link says so too', async ({
   ).not.toHaveAttribute('aria-current', 'page')
 
   await views(page).getByRole('link', { name: /^Docs/ }).click()
-  await expect(page).toHaveURL(/list=docs/)
+  await expect(page).toHaveURL(/list=[0-9a-f]{24}/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Docs')
   for (const row of await page.getByRole('listitem').all()) {
     await expect(row).toContainText('Docs')
@@ -82,9 +82,16 @@ test('G I and G T land on the same views the sidebar links to', async ({
   page,
 }) => {
   await signIn(page)
-  await gotoHydrated(page, '/?list=infra')
+  await gotoHydrated(page)
+  // Start on a list view, reached the way a person would.
+  await views(page)
+    .getByRole('link', { name: /^Infra/ })
+    .click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Infra')
 
+  /* The click left focus on the link, and a single-key shortcut deliberately
+     does not fire while a link has focus -- it would fire twice. */
+  await page.evaluate(() => (document.activeElement as HTMLElement).blur())
   await page.keyboard.press('g')
   await page.keyboard.press('t')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Today')

@@ -2,14 +2,10 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Kbd } from '~/shared/components/Kbd'
 import { fuzzyScore } from '~/shared/lib/fuzzy'
 import type { Command } from '~/shared/lib/commands'
-import {
-  LISTS,
-  PRIORITIES,
-  PRIORITY_LABEL,
-  STATUS_LABEL,
-  listName,
-} from '../task.types'
-import type { ListId, Priority, Task } from '../task.types'
+import { PRIORITIES, PRIORITY_LABEL, STATUS_LABEL } from '../task.types'
+import type { Priority, Task } from '../task.types'
+import { listName } from '~/features/lists/list.types'
+import type { List } from '~/features/lists/list.types'
 import styles from './CommandPalette.module.css'
 
 /* The palette is another interface over the registry, not a second
@@ -56,6 +52,7 @@ interface Item {
 export function CommandPalette({
   commands,
   tasks,
+  lists,
   canSetPriority,
   onSelectTask,
   onFilterList,
@@ -65,10 +62,11 @@ export function CommandPalette({
 }: {
   commands: Command[]
   tasks: Task[]
+  lists: List[]
   /** Priority applies to the selected task; without one the rows are inert. */
   canSetPriority: boolean
   onSelectTask: (id: string) => void
-  onFilterList: (listId: ListId) => void
+  onFilterList: (listId: string) => void
   onSetPriority: (priority: Priority) => void
   onCreateTask: (title: string) => void
   onClose: () => void
@@ -123,6 +121,7 @@ export function CommandPalette({
     term,
     commands,
     tasks,
+    lists,
     recent,
     canSetPriority,
     onSelectTask,
@@ -270,19 +269,45 @@ export function CommandPalette({
           <span className={styles.resultLabel} aria-live="polite">
             {resultLabel}
           </span>
-          <Kbd keys="esc" />
+          <span className={styles.escHint}>
+            <Kbd keys="esc" />
+          </span>
+          {/* The sheet's way out. Hidden where Escape exists. */}
+          <button
+            type="button"
+            className={styles.close}
+            aria-label="Close"
+            onClick={onClose}
+          >
+            ✕
+          </button>
         </div>
 
-        <div className={styles.scopes} aria-hidden="true">
+        {/* Buttons, not hints: on a phone there is no ⇥ to cycle them, and on
+            a desktop a tap is no worse than a key. Each one rewrites the
+            prefix and keeps whatever was typed. */}
+        <div className={styles.scopes}>
           {SCOPES.filter((s) => s.prefix).map((s) => (
-            <span
+            <button
               key={s.name}
+              type="button"
               className={`${styles.scope} ${scope === s.name ? styles.scopeActive : ''}`}
+              aria-pressed={scope === s.name}
+              onClick={() => {
+                setQuery(scope === s.name ? term : `${s.prefix} ${term}`)
+                setHighlight(0)
+                inputRef.current?.focus()
+              }}
             >
-              <span className={styles.scopePrefix}>{s.prefix}</span> {s.name}
-            </span>
+              <span className={styles.scopePrefix} aria-hidden="true">
+                {s.prefix}
+              </span>{' '}
+              {s.name}
+            </button>
           ))}
-          <span className={styles.scopeHint}>Fuzzy match, recent-first</span>
+          <span className={styles.scopeHint} aria-hidden="true">
+            Fuzzy match, recent-first
+          </span>
         </div>
 
         <ul
@@ -416,10 +441,11 @@ function buildGroups(args: {
   term: string
   commands: Command[]
   tasks: Task[]
+  lists: List[]
   recent: string[]
   canSetPriority: boolean
   onSelectTask: (id: string) => void
-  onFilterList: (listId: ListId) => void
+  onFilterList: (listId: string) => void
   onSetPriority: (priority: Priority) => void
 }): Group[] {
   const { scope, term } = args
@@ -459,7 +485,7 @@ function buildGroups(args: {
         items: shown.map((t) => ({
           id: `task:${t.id}`,
           label: t.title,
-          hint: [STATUS_LABEL[t.status], listName(t.listId)]
+          hint: [STATUS_LABEL[t.status], listName(args.lists, t.listId)]
             .filter(Boolean)
             .join(' · '),
           group: 'Tasks',
@@ -470,15 +496,15 @@ function buildGroups(args: {
   }
 
   if (scope === 'Lists') {
-    const items = LISTS.filter((l) => fuzzyScore(term, l.name) !== null).map(
-      (l): Item => ({
+    const items = args.lists
+      .filter((l) => fuzzyScore(term, l.name) !== null)
+      .map((l): Item => ({
         id: `list:${l.id}`,
         label: l.name,
         hint: 'Show only this list',
         group: 'Lists',
         run: () => args.onFilterList(l.id),
-      }),
-    )
+      }))
     if (items.length) groups.push({ key: 'lists', name: 'Lists', items })
   }
 

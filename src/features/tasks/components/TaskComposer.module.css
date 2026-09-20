@@ -40,6 +40,17 @@
   border-color: transparent;
 }
 
+.key {
+  display: inline-flex;
+}
+
+/* Phone: no N to press, and the bar needs the width. */
+@media (max-width: 640px) {
+  .key {
+    display: none;
+  }
+}
+
 /* The parser's reading of the draft: chips, in the order the tokens appeared. */
 .reading {
   display: flex;

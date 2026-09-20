@@ -1,0 +1,44 @@
+/* Phone widths only. Above them the sidebar carries the same links. */
+.nav {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .nav {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: var(--space-1) var(--space-2)
+      calc(var(--space-1) + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--hairline);
+  }
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  /* The design's touch target, and not an inch less. */
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  font: var(--text-micro);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--secondary);
+  text-decoration: none;
+}
+
+/* Active is never colour alone: aria-current carries it, and the weight and
+   the ink change together. */
+.item[aria-current='page'] {
+  color: var(--rust-700);
+  font-weight: 700;
+}

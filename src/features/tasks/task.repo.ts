@@ -2,7 +2,7 @@ import '@tanstack/react-start/server-only'
 import { ObjectId } from 'mongodb'
 import type { Collection, Document, WithId } from 'mongodb'
 import { getDb } from '~/server/db'
-import type { ListId, Priority, Task, TaskStatus } from './task.types'
+import type { Priority, Task, TaskStatus } from './task.types'
 
 /* The persistence shape. It differs from `Task` on purpose: dates are stored
    as Date so Mongo can compare and index them, and the id is an ObjectId.
@@ -14,7 +14,8 @@ export interface TaskDoc extends Document {
   status: TaskStatus
   dueAt: Date | null
   priority: Priority
-  listId: ListId | null
+  /** A reference into the owner's lists, or null. */
+  listId: ObjectId | null
   createdAt: Date
   updatedAt: Date
 }
@@ -58,7 +59,10 @@ export function toTask(doc: WithId<TaskDoc>): Task {
     // and arrive at the client as a string anyway.
     dueAt: doc.dueAt ? doc.dueAt.toISOString() : null,
     priority: doc.priority,
-    listId: doc.listId ?? null,
+    /* instanceof, not truthiness: rows written before lists were a collection
+       hold a string here, and a string must read as "no list" rather than
+       crash the map. The seed replaces them; a real deployment migrates. */
+    listId: doc.listId instanceof ObjectId ? doc.listId.toHexString() : null,
     createdAt: doc.createdAt.toISOString(),
     updatedAt: doc.updatedAt.toISOString(),
   }

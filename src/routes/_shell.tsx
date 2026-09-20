@@ -3,8 +3,11 @@ import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { AccountBar } from '~/features/auth/components/AccountBar'
 import { viewerQuery } from '~/features/auth/auth.query'
 import { tasksQuery } from '~/features/tasks/task.query'
+import { listsQuery } from '~/features/lists/list.query'
 import { markBooted } from '~/features/tasks/task.lastView'
 import { Sidebar } from '~/features/tasks/components/Sidebar'
+import { ListSkeleton } from '~/features/tasks/components/ListSkeleton'
+import { RouteError } from '~/shared/components/RouteError'
 import styles from './_shell.module.css'
 
 /* The application frame (PLAN.md 4.2): sidebar, account bar, and a content
@@ -25,9 +28,25 @@ export const Route = createFileRoute('/_shell')({
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(tasksQuery),
+      context.queryClient.ensureQueryData(listsQuery),
       context.queryClient.ensureQueryData(viewerQuery),
     ]),
   component: Shell,
+
+  /* The two states a loader can be in besides done (PLAN.md 7.1).
+
+     Pending: the skeleton, but only once the load has taken 200ms -- a faster
+     one goes straight to content and never flashes -- and then for at least
+     a moment, so a load that finishes at 201ms does not flicker. The first
+     paint is server-rendered and never pending; this is for client-side
+     navigations into the shell, such as the one after signing in.
+
+     Error: the route's own view, with the server's message and a real retry,
+     in place of the router's bare fallback. */
+  pendingComponent: ListSkeleton,
+  pendingMs: 200,
+  pendingMinMs: 300,
+  errorComponent: RouteError,
 })
 
 function Shell() {

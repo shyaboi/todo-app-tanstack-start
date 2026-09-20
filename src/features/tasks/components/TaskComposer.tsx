@@ -2,12 +2,14 @@ import { useRef, useState } from 'react'
 import { Button } from '~/shared/components/Button'
 import { Chip } from '~/shared/components/Pill'
 import { Kbd } from '~/shared/components/Kbd'
+import { useQuery } from '@tanstack/react-query'
+import { listsQuery, useCreateList } from '~/features/lists/list.query'
 import { useCreateTask } from '../task.query'
 import { titleSchema } from '../task.schema'
 import type { CreateTaskInput } from '../task.schema'
 import { parseComposer } from '../task.parse'
 import type { ParsedToken } from '../task.parse'
-import { PRIORITY_LABEL, STATUS_LABEL, listName } from '../task.types'
+import { PRIORITY_LABEL, STATUS_LABEL } from '../task.types'
 import styles from './TaskComposer.module.css'
 
 /**
@@ -32,11 +34,13 @@ export function TaskComposer() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const create = useCreateTask()
+  const createList = useCreateList()
+  const { data: lists = [] } = useQuery(listsQuery)
 
   /* Parsed at render from the draft. `new Date()` here is safe for hydration:
      the draft is empty on the server, and an empty draft never reaches the
      date parser. */
-  const parsed = parseComposer(text, new Date())
+  const parsed = parseComposer(text, new Date(), lists)
 
   function onSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -62,17 +66,25 @@ export function TaskComposer() {
     if (parsed.dueAt) input.dueAt = parsed.dueAt
 
     setError(null)
-    create.mutate(input, {
-      onSuccess: () => setText(''),
-      onError: (err: unknown) =>
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Could not save that. Try again.',
-        ),
-    })
-    // Cleared optimistically so the next task can be typed immediately; the
-    // error path puts the text back.
+
+    /* A #name nobody owns yet is a list to make. It is created FIRST, because
+       the task needs its id -- and if that fails, the failure toast says so
+       and no half-filed task is written. */
+    if (parsed.newList) {
+      createList.mutate(
+        { name: parsed.newList },
+        { onSuccess: (list) => create.mutate({ ...input, listId: list.id }) },
+      )
+      setText('')
+      return
+    }
+
+    /* Cleared at once so the next task can be typed immediately. A failure is
+       not reported here: the mutation hook rolls the cache back and raises
+       the failure toast, whose Retry re-sends exactly this input. The message
+       under the field is for validation, which happens before anything is
+       sent. */
+    create.mutate(input)
     setText('')
   }
 
@@ -105,7 +117,9 @@ export function TaskComposer() {
           }
           autoComplete="off"
         />
-        <Kbd keys="N" />
+        <span className={styles.key}>
+          <Kbd keys="N" />
+        </span>
         <Button type="submit" variant="primary" loading={create.isPending}>
           Add task
         </Button>
@@ -162,7 +176,9 @@ const dueFormat = new Intl.DateTimeFormat('en-GB', {
 function describe(token: ParsedToken): string {
   switch (token.kind) {
     case 'list':
-      return `List · ${listName(token.listId) ?? token.listId}`
+      return `List · ${token.name}`
+    case 'new-list':
+      return `New list · ${token.name}`
     case 'priority':
       return PRIORITY_LABEL[token.priority]
     case 'status':

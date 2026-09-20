@@ -24,7 +24,9 @@ describe('fuzzyScore', () => {
 
   it('prefers a hit at the start of a word', () => {
     const wordStart = fuzzyScore('sea', 'Focus the search')!
-    const midWord = fuzzyScore('sea', 'Release notes')!
+    // 'sea' inside a word, contiguously. ('Release notes' has no 'sea' in
+    // order at all -- the fixture this test shipped with, which never ran.)
+    const midWord = fuzzyScore('sea', 'Undersea cables')!
     expect(wordStart).toBeGreaterThan(midWord)
   })
 
