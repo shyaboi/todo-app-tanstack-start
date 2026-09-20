@@ -229,16 +229,31 @@ function secretValues(): string[] {
     )
   }
 
+  // The whole string, always: it is never a legitimate thing to ship.
   const values = [uri]
   try {
     const parsed = new URL(uri)
-    values.push(parsed.hostname)
+    /* A cluster hostname is an attack surface and worth scanning for. A LOCAL
+       one is not a secret -- and "localhost" is nine characters, so a scan
+       filtered only by length reports every bundle that mentions it. CI runs
+       against mongodb://localhost:27017, so that is not hypothetical: it is
+       what this test failed on the first time it ran there. */
+    if (!isLocal(parsed.hostname)) values.push(parsed.hostname)
     if (parsed.username) values.push(decodeURIComponent(parsed.username))
     if (parsed.password) values.push(decodeURIComponent(parsed.password))
   } catch {
     // An unparseable URI is still scanned whole.
   }
   return [...new Set(values)].filter((v) => v.length >= 8)
+}
+
+function isLocal(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname === '[::1]'
+  )
 }
 
 /** Reports a hit without printing the secret into a CI log. */
