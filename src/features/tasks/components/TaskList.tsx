@@ -4,6 +4,7 @@ import { Button } from '~/shared/components/Button'
 import { ConfirmDialog } from '~/shared/components/ConfirmDialog'
 import { usePlatform } from '~/shared/hooks/usePlatform'
 import { useSwipe } from '~/shared/hooks/useSwipe'
+import { useEntering } from '~/shared/hooks/useEntering'
 import { displayKeys } from '~/shared/lib/keys'
 import { useQuery } from '@tanstack/react-query'
 import { listsQuery } from '~/features/lists/list.query'
@@ -57,6 +58,8 @@ export function TaskList({
 function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
   const update = useUpdateTask(task.id)
   const platform = usePlatform()
+  // A row created just now arrives; the twenty already on screen do not.
+  const entering = useEntering()
   // From the cache the shell already loaded: no fetch, no prop drilling.
   const { data: lists = [] } = useQuery(listsQuery)
   /* Swipe-to-done (PLAN.md 7.3): either direction toggles done, the same
@@ -99,6 +102,7 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
       className={className}
       tabIndex={-1}
       data-task-row={task.id}
+      data-enter={entering || undefined}
       aria-current={selected ? 'true' : undefined}
       onFocus={() => controls.onSelect(task.id)}
       {...swipe.handlers}

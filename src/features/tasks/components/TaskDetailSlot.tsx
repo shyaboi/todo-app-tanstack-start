@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '~/shared/components/Button'
+import { useEntering } from '~/shared/hooks/useEntering'
 import { tasksQuery } from '../task.query'
 import { TaskDetailPanel } from './TaskDetailPanel'
 import styles from './TaskDetailSlot.module.css'
@@ -30,12 +31,19 @@ export function TaskDetailSlot({
 }) {
   // The same cache the view reads; an optimistic edit shows here instantly.
   const { data: tasks = [] } = useQuery(tasksQuery)
+  // Read here rather than in the branch below: hooks are unconditional, and
+  // both branches fill the same slot and arrive the same way.
+  const entering = useEntering()
   const task = tasks.find((t) => t.id === todoId)
 
   if (!task) {
     // Deleted, undone, or never yours: all the same from here (§4.8).
     return (
-      <aside className={styles.missing} aria-labelledby="task-missing-title">
+      <aside
+        className={styles.missing}
+        data-enter={entering || undefined}
+        aria-labelledby="task-missing-title"
+      >
         <h2 className={styles.missingTitle} id="task-missing-title">
           That task is not here
         </h2>

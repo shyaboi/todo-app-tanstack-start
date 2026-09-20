@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { PriorityPill } from '~/shared/components/Pill'
 import { useQuery } from '@tanstack/react-query'
 import { listsQuery } from '~/features/lists/list.query'
+import { useEntering } from '~/shared/hooks/useEntering'
 import { listName } from '~/features/lists/list.types'
 import { STATUS_LABEL, TASK_STATUSES } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
@@ -137,6 +138,9 @@ function BoardCard({
   controls: BoardControls
 }) {
   const { data: lists = [] } = useQuery(listsQuery)
+  /* A card that moves column unmounts from one list and mounts in the other,
+     so this is true exactly when it has just landed somewhere new. */
+  const entering = useEntering()
   const selected = controls.selectedId === task.id
   const lifted = controls.liftedId === task.id
   const dragging = controls.draggingId === task.id
@@ -163,6 +167,7 @@ function BoardCard({
       className={className}
       tabIndex={-1}
       data-task-card={task.id}
+      data-enter={entering || undefined}
       aria-current={selected ? 'true' : undefined}
       aria-label={`${task.title}, ${STATUS_LABEL[task.status]}${lifted ? ', picked up' : ''}`}
       draggable={!creating}

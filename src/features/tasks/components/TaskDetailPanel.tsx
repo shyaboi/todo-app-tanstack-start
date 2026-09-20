@@ -8,6 +8,7 @@ import { notesSchema, titleSchema } from '../task.schema'
 import type { TaskPatchInput } from '../task.schema'
 import { useQuery } from '@tanstack/react-query'
 import { listsQuery } from '~/features/lists/list.query'
+import { useEntering } from '~/shared/hooks/useEntering'
 import {
   PRIORITIES,
   PRIORITY_LABEL,
@@ -115,11 +116,15 @@ export function TaskDetailPanel({
   }, [onClose])
 
   const creating = isTempId(task.id)
+  // A deep link to the panel loads with it already open: it is part of
+  // the page then, not something that slid in (PLAN.md 4.6).
+  const entering = useEntering()
 
   return (
     <aside
       ref={panelRef}
       className={styles.panel}
+      data-enter={entering || undefined}
       aria-labelledby={headingId}
       tabIndex={-1}
       data-task-panel={task.id}

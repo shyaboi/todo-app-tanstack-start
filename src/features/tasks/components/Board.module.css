@@ -204,3 +204,21 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* A card that lands in a column arrives rather than appearing (PLAN.md 8.4d).
+   data-enter is set only on a card that mounted after the page painted, so a
+   board that loads with thirty cards on it stays perfectly still. Moving a
+   card between columns unmounts it from one list and mounts it in the other,
+   which is exactly when this should run. */
+@media (prefers-reduced-motion: no-preference) {
+  .card[data-enter] {
+    animation: cardIn var(--motion-sheet) var(--ease) both;
+  }
+
+  @keyframes cardIn {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+  }
+}

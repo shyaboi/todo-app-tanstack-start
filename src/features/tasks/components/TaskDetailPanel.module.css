@@ -103,3 +103,20 @@
     padding-bottom: calc(var(--space-5) + env(safe-area-inset-bottom));
   }
 }
+
+/* 180ms, the design's duration for a panel (PLAN.md 4.6) -- the one token
+   nothing was using yet. It moves in from the side it opens on, and only when
+   it was opened: a deep link arrives with the panel already part of the page,
+   and data-enter is absent then (useEntering). */
+@media (prefers-reduced-motion: no-preference) {
+  .panel[data-enter] {
+    animation: panelIn var(--motion-panel) var(--ease) both;
+  }
+
+  @keyframes panelIn {
+    from {
+      opacity: 0;
+      transform: translateX(8px);
+    }
+  }
+}
