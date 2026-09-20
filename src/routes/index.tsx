@@ -28,7 +28,12 @@ import {
 import type { SortOrder } from '~/features/tasks/task.filters'
 import { parseTaskSearch, toFilters } from '~/features/tasks/task.search-params'
 import type { TaskSearch } from '~/features/tasks/task.search-params'
-import { buildTaskCommands } from '~/features/tasks/task.commands'
+import {
+  UNBUILT_BINDINGS,
+  buildTaskCommands,
+} from '~/features/tasks/task.commands'
+import { KeyboardMap } from '~/shared/components/KeyboardMap'
+import { ModeHint } from '~/features/tasks/components/ModeHint'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
 import { TaskGroups, TaskList } from '~/features/tasks/components/TaskList'
 import type { RowControls } from '~/features/tasks/components/TaskList'
@@ -132,6 +137,7 @@ function TasksPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
   const [undo, setUndo] = useState<PendingUndo | null>(null)
 
   const restore = useRestoreTask()
@@ -207,6 +213,7 @@ function TasksPage() {
       }
     },
     openPalette: () => setPaletteOpen(true),
+    openHelp: () => setHelpOpen(true),
   })
   useShortcuts(commands, selected !== null)
 
@@ -281,6 +288,21 @@ function TasksPage() {
         <TaskGroups groups={groups} controls={controls} now={now} />
       ) : (
         <TaskList tasks={visibleTasks} controls={controls} />
+      )}
+
+      <ModeHint
+        hasSelection={selected !== null}
+        onOpenPalette={() => setPaletteOpen(true)}
+        onOpenHelp={() => setHelpOpen(true)}
+      />
+
+      {helpOpen && (
+        <KeyboardMap
+          commands={commands}
+          hasSelection={selected !== null}
+          unbuilt={UNBUILT_BINDINGS}
+          onClose={() => setHelpOpen(false)}
+        />
       )}
 
       {paletteOpen && (

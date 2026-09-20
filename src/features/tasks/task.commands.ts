@@ -25,7 +25,24 @@ export interface TaskCommandContext {
   focusComposer: () => void
   focusSearch: () => void
   openPalette: () => void
+  openHelp: () => void
 }
+
+/**
+ * Keys the design's map draws that this build does not bind yet. Listed in the
+ * help overlay, greyed, rather than omitted: a key map that quietly drops the
+ * board bindings reads as complete when it is not.
+ *
+ * ⌘Z / ⇧⌘Z and ⇧1…3 are absent even here -- those are cut, not pending
+ * (PLAN.md D10, D12).
+ */
+export const UNBUILT_BINDINGS = [
+  { keys: '←  →', label: 'Move between board columns (Sprint 6)' },
+  { keys: '⇧→', label: 'Move a card to the next status (Sprint 6)' },
+  { keys: 'G B', label: 'Go to the board (Sprint 6)' },
+  { keys: 'V', label: 'Switch between list and board (Sprint 6)' },
+  { keys: 'D', label: 'Edit the due date (Sprint 6)' },
+] as const
 
 /**
  * The registry, built from the page's current state. A plain function rather
@@ -220,6 +237,13 @@ export function buildTaskCommands(ctx: TaskCommandContext): Command[] {
       group: 'Help',
       hidden: true,
       run: ctx.openPalette,
+    },
+    {
+      id: 'open-help',
+      label: 'Show the keyboard map',
+      keys: '?',
+      group: 'Help',
+      run: ctx.openHelp,
     },
   ]
 }
