@@ -60,21 +60,27 @@ test('⇧→ moves the selected card to the next column, and it persists', async
   await expect(card(page, title)).toBeFocused()
   await expect(column(page, 'To do').getByText(title)).toBeVisible()
 
+  /* Each move is acknowledged before the next, and each wait is registered
+     BEFORE its key: an acknowledgement can arrive before a wait set up
+     afterwards would start listening, and then nothing ever resolves. Waiting
+     per move also keeps the first move's response from satisfying the wait
+     meant for the second. */
+  const toDoing = waitForServerAck(page, title)
   await page.keyboard.press('Shift+ArrowRight')
   await expect(column(page, 'In progress').getByText(title)).toBeVisible()
   await expect(live(page)).toContainText('In progress')
   // Focus followed the card into its new column.
   await expect(card(page, title)).toBeFocused()
+  await toDoing
 
+  const toDone = waitForServerAck(page, title)
   await page.keyboard.press('Shift+ArrowRight')
   await expect(column(page, 'Done').getByText(title)).toBeVisible()
+  await toDone
   // Nowhere further to go: the key is inert, the card stays.
   await page.keyboard.press('Shift+ArrowRight')
   await expect(column(page, 'Done').getByText(title)).toBeVisible()
 
-  // Optimistic UI: the column moved before the server was told. Reloading
-  // straight away races the write, so wait for the acknowledgement first.
-  await waitForServerAck(page, title)
   await page.reload()
   await expect(column(page, 'Done').getByText(title)).toBeVisible()
 })
@@ -164,12 +170,14 @@ test('a card can be dragged to a column, and lands where ⇧→ would put it', a
   const title = uniqueTitle('board drag')
   await boardWith(page, title)
 
+  // Registered before the drag, for the same reason as every other wait.
+  const moved = waitForServerAck(page, title)
   await card(page, title).dragTo(column(page, 'Done'))
   await expect(column(page, 'Done').getByText(title)).toBeVisible()
   // The same announcement as the keyboard move: one implementation.
   await expect(live(page)).toContainText('Done')
 
-  await waitForServerAck(page, title)
+  await moved
   await page.reload()
   await expect(column(page, 'Done').getByText(title)).toBeVisible()
 })
@@ -180,6 +188,35 @@ test('dropping a card on its own column changes nothing', async ({ page }) => {
   await card(page, title).dragTo(column(page, 'To do'))
   await expect(column(page, 'To do').getByText(title)).toBeVisible()
   await expect(live(page)).toHaveText('')
+})
+
+test('a page that loaded on the board can still get back to the list', async ({
+  page,
+}) => {
+  await signIn(page)
+  // Loading here remembers "board" and never renders / -- the case where the
+  // first click on Inbox used to count as a bare visit and bounce straight
+  // back.
+  await gotoHydrated(page, '/board')
+  const inbox = page
+    .getByRole('navigation', { name: 'Views' })
+    .getByRole('link', { name: /^Inbox/ })
+  await inbox.click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inbox')
+  await expect(page).toHaveURL(/\/$|\/\?/)
+  // And it stays there.
+  await page.waitForTimeout(500)
+  await expect(page).toHaveURL(/\/$|\/\?/)
+
+  /* The keyboard route back works too. The click left focus on the link, and
+     a single-key shortcut deliberately does not fire while a link or button
+     has focus -- so step off it first, as a person's next Tab or click would. */
+  await inbox.evaluate((el: HTMLElement) => el.blur())
+  await page.keyboard.press('g')
+  await page.keyboard.press('b')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Board')
+  await page.keyboard.press('v')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inbox')
 })
 
 test('the board has no accessibility violations', async ({ page }) => {

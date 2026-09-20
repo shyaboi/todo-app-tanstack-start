@@ -139,14 +139,17 @@ test('nothing matched: Enter creates the task you typed', async ({ page }) => {
   const box = await open(page)
   await box.fill(title)
   await expect(page.getByText(`No match for “${title}”.`)).toBeVisible()
+  // Registered BEFORE the key: the acknowledgement can arrive before a wait
+  // set up afterwards would start listening, and then nothing ever resolves.
+  const saved = waitForServerAck(page, title)
   await page.keyboard.press('Enter')
 
   await expect(
     page.getByRole('listitem').filter({ hasText: title }),
   ).toBeVisible()
-  // Optimistic UI: the row is on screen before the server has the task.
-  // Reloading straight away races the write; wait for the acknowledgement.
-  await waitForServerAck(page, title)
+  // Optimistic UI: the row is on screen before the server has the task, and
+  // reloading straight away would race the write.
+  await saved
   await page.reload()
   await expect(
     page.getByRole('listitem').filter({ hasText: title }),

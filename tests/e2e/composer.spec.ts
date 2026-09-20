@@ -29,6 +29,9 @@ test('what the chips said is what the row shows, and it persists', async ({
   await expect(docs).toHaveText(/Docs.*0$/)
 
   await input(page).fill(`${title} #docs !p1 ~doing tomorrow 4pm`)
+  // Registered BEFORE the key: the acknowledgement can arrive before a wait
+  // set up afterwards would start listening, and then nothing ever resolves.
+  const saved = waitForServerAck(page, title)
   await page.keyboard.press('Enter')
 
   const row = page.getByRole('listitem').filter({ hasText: title })
@@ -42,7 +45,8 @@ test('what the chips said is what the row shows, and it persists', async ({
   // The tokens did not leak into the title.
   await expect(row).not.toContainText('#docs')
 
-  await waitForServerAck(page, title)
+  // Optimistic UI: reloading before the write is acknowledged races it.
+  await saved
   await page.reload()
   const again = page.getByRole('listitem').filter({ hasText: title })
   await expect(again).toContainText('Docs')

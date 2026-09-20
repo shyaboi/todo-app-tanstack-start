@@ -32,17 +32,24 @@ export function rememberView(view: View): void {
   }
 }
 
-/* Decided once per page load, then remembered for the session. "Bare" means
-   the address carries no filters: a link that says ?status=todo shows what it
-   says, whatever was open last. Going to / later, by G I or the sidebar, is
-   a choice, not a bare visit, and never bounces. */
-let decided = false
-let toBoard = false
+/* Only the page load may bounce. "Bare" means the address carries no filters:
+   a link that says ?status=todo shows what it says, whatever was open last.
+   Going to / later -- by G I, V, or the sidebar -- is a choice, and never
+   bounces.
+
+   "Later" is measured from the app's first commit, not from the first time /
+   is rendered. The difference matters: a page that LOADED on /board has never
+   rendered /, and the first click on Inbox must not count as a bare visit --
+   it did, once, and Inbox was unreachable from the board. The shell marks the
+   boot in its mount effect; the routes' effects run before it (children
+   first), which is exactly the window in which a bounce is legitimate. */
+let booted = false
+
+export function markBooted(): void {
+  booted = true
+}
 
 export function bootRedirectsToBoard(hasSearch: boolean): boolean {
-  if (!decided) {
-    decided = true
-    toBoard = !hasSearch && readLastView() === 'board'
-  }
-  return toBoard
+  if (booted) return false
+  return !hasSearch && readLastView() === 'board'
 }

@@ -1,7 +1,9 @@
+import { useEffect } from 'react'
 import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { AccountBar } from '~/features/auth/components/AccountBar'
 import { viewerQuery } from '~/features/auth/auth.query'
 import { tasksQuery } from '~/features/tasks/task.query'
+import { markBooted } from '~/features/tasks/task.lastView'
 import { Sidebar } from '~/features/tasks/components/Sidebar'
 import styles from './_shell.module.css'
 
@@ -29,6 +31,13 @@ export const Route = createFileRoute('/_shell')({
 })
 
 function Shell() {
+  /* The end of the page load, as far as D5's "bare visit" is concerned. The
+     routes inside have already run their mount effects by the time this one
+     runs, so a bounce to the board can only ever happen from here on never. */
+  useEffect(() => {
+    markBooted()
+  }, [])
+
   return (
     <div className={styles.shell}>
       <Sidebar />
