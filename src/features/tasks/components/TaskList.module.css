@@ -131,3 +131,11 @@
   background: var(--sunken);
   border-color: var(--border-strong);
 }
+
+/* The selection tint is --sunken, and --meta only clears 4.5:1 on --surface
+   (4.32 here). The row's small text steps up one shade while selected. */
+.selected .listName,
+.selected .due:not(.overdue),
+.selected .saving {
+  color: var(--secondary);
+}
