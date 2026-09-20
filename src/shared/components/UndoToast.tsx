@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import styles from './UndoToast.module.css'
 
 const WINDOW_SECONDS = 8
@@ -22,17 +22,24 @@ export function UndoToast({
      second delete mounts a fresh toast with a fresh countdown. Resetting state
      from inside an effect renders once with a stale value first, which is what
      react-hooks/set-state-in-effect is warning about. */
+  /* useEffectEvent, so the timer is independent of the callback's identity.
+     Without it the effect would depend on onExpire, and a parent re-render
+     that recreated the callback -- a refetch, another mutation -- would clear
+     and restart the 8-second window. The countdown must belong to the delete,
+     not to the render that happened to pass the prop. */
+  const expire = useEffectEvent(onExpire)
+
   useEffect(() => {
     const tick = setInterval(() => {
       setRemaining((n) => (n > 0 ? n - 1 : 0))
     }, 1000)
-    const expiry = setTimeout(onExpire, WINDOW_SECONDS * 1000)
+    const expiry = setTimeout(() => expire(), WINDOW_SECONDS * 1000)
 
     return () => {
       clearInterval(tick)
       clearTimeout(expiry)
     }
-  }, [onExpire])
+  }, [])
 
   return (
     // role="status" is polite: the deletion already happened, so this is a
