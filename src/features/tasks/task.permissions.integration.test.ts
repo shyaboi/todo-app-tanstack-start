@@ -32,19 +32,31 @@ const draft = (title: string) => ({
 let adaTaskId: string
 let graceTaskId: string
 
-beforeAll(async () => {
-  const db = await getDb()
-  await db.collection('tasks').deleteMany({})
-  await db.collection('tasks_trash').deleteMany({})
+/* Scoped to this file's own owners, never the whole collection. Integration
+   files share one database and vitest may run them together, so a suite that
+   wipes `tasks` wholesale deletes another suite's fixtures out from under it
+   -- which is exactly what happened when the lists suite arrived. */
+const owners = { ownerId: { $in: [new ObjectId(ada), new ObjectId(grace)] } }
+const trashOwners = {
+  'task.ownerId': { $in: [new ObjectId(ada), new ObjectId(grace)] },
+}
 
+async function clearOurs() {
+  const db = await getDb()
+  await Promise.all([
+    db.collection('tasks').deleteMany(owners),
+    db.collection('tasks_trash').deleteMany(trashOwners),
+  ])
+}
+
+beforeAll(async () => {
+  await clearOurs()
   adaTaskId = (await service.createTask(ada, draft("Ada's task"))).id
   graceTaskId = (await service.createTask(grace, draft("Grace's task"))).id
 })
 
 afterAll(async () => {
-  const db = await getDb()
-  await db.collection('tasks').deleteMany({})
-  await db.collection('tasks_trash').deleteMany({})
+  await clearOurs()
   await closeClient()
 })
 

@@ -26,12 +26,18 @@ const draft = (title: string, listId: string | null = null) => ({
 let adaListId: string
 let graceListId: string
 
+/* Scoped to this file's own owners, never the whole collection: integration
+   files share one database and vitest may run them together, so wiping
+   `tasks` wholesale would delete the task suite's fixtures mid-run. It did. */
 async function reset() {
   const db = await getDb()
+  const owners = { ownerId: { $in: [new ObjectId(ada), new ObjectId(grace)] } }
   await Promise.all([
-    db.collection('lists').deleteMany({}),
-    db.collection('tasks').deleteMany({}),
-    db.collection('tasks_trash').deleteMany({}),
+    db.collection('lists').deleteMany(owners),
+    db.collection('tasks').deleteMany(owners),
+    db.collection('tasks_trash').deleteMany({
+      'task.ownerId': { $in: [new ObjectId(ada), new ObjectId(grace)] },
+    }),
   ])
 }
 
