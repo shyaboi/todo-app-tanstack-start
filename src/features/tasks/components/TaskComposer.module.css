@@ -40,6 +40,50 @@
   border-color: transparent;
 }
 
+/* The parser's reading of the draft: chips, in the order the tokens appeared. */
+.reading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline-start: var(--space-3);
+}
+
+.readingLabel {
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+/* The grammar, shown while the field is in use and folded away otherwise, so
+   an empty page is not a manual. Height rather than display so a screen
+   reader can always reach it through aria-describedby. */
+.hint {
+  font: var(--text-small);
+  color: var(--secondary);
+  padding-inline-start: var(--space-3);
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.hint code {
+  font: var(--text-mono);
+  color: var(--rust-700);
+}
+
+.hintVisible {
+  max-height: 3em;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hint {
+    transition:
+      max-height var(--motion-fast) var(--ease),
+      opacity var(--motion-fast) var(--ease);
+  }
+}
+
 .error {
   display: flex;
   align-items: center;
