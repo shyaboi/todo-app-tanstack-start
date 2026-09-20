@@ -25,7 +25,8 @@
     "seed:e2e": "tsx --env-file-if-exists=.env.e2e scripts/seed.ts",
     "test:integration": "vitest run --project integration",
     "migrate:lists": "tsx scripts/migrate-lists.ts",
-    "migrate:lists:e2e": "tsx --env-file-if-exists=.env.e2e scripts/migrate-lists.ts"
+    "migrate:lists:e2e": "tsx --env-file-if-exists=.env.e2e scripts/migrate-lists.ts",
+    "test:artifact": "vitest run --project artifact"
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "5.3.0",
