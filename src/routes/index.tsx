@@ -29,6 +29,7 @@ import type { SortOrder } from '~/features/tasks/task.filters'
 import { parseTaskSearch, toFilters } from '~/features/tasks/task.search-params'
 import type { TaskSearch } from '~/features/tasks/task.search-params'
 import { buildTaskCommands } from '~/features/tasks/task.commands'
+import { CommandPalette } from '~/features/tasks/components/CommandPalette'
 import { TaskGroups, TaskList } from '~/features/tasks/components/TaskList'
 import type { RowControls } from '~/features/tasks/components/TaskList'
 import {
@@ -130,6 +131,7 @@ function TasksPage() {
      because a click and a shortcut can each start them and must agree. */
   const [editingId, setEditingId] = useState<string | null>(null)
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [paletteOpen, setPaletteOpen] = useState(false)
   const [undo, setUndo] = useState<PendingUndo | null>(null)
 
   const restore = useRestoreTask()
@@ -155,9 +157,9 @@ function TasksPage() {
     updateSelected.mutate({ id: task.id, patch: { status } })
   }
 
-  /* One registry feeds the shortcuts now and the palette in 5.2. Every entry
-     dispatches into the same mutation or navigation the visible control uses,
-     so there is exactly one implementation of each behaviour (PLAN.md 4.5). */
+  /* One registry feeds the shortcuts and the palette. Every entry dispatches
+     into the same mutation or navigation the visible control uses, so there is
+     exactly one implementation of each behaviour (PLAN.md 4.5). */
   const commands = buildTaskCommands({
     selected,
     search,
@@ -204,6 +206,7 @@ function TasksPage() {
         box.select()
       }
     },
+    openPalette: () => setPaletteOpen(true),
   })
   useShortcuts(commands, selected !== null)
 
@@ -278,6 +281,30 @@ function TasksPage() {
         <TaskGroups groups={groups} controls={controls} now={now} />
       ) : (
         <TaskList tasks={visibleTasks} controls={controls} />
+      )}
+
+      {paletteOpen && (
+        <CommandPalette
+          commands={commands}
+          tasks={tasks}
+          canSetPriority={selected !== null}
+          onSelectTask={(id) => {
+            /* A task hidden by the current filters is still findable here, so
+               picking it clears them; the row then exists to be selected. Once
+               the detail route lands (Sprint 6) this becomes a navigation. */
+            if (!ordered.some((t) => t.id === id)) goTo({ sort: search.sort })
+            selection.select(id)
+            selection.focusRow(id)
+          }}
+          onFilterList={(listId) => updateSearch({ list: listId })}
+          onSetPriority={(priority) => {
+            if (selected) {
+              updateSelected.mutate({ id: selected.id, patch: { priority } })
+            }
+          }}
+          onCreateTask={(title) => create.mutate({ title })}
+          onClose={() => setPaletteOpen(false)}
+        />
       )}
 
       {undo && (

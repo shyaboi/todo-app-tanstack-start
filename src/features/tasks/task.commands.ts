@@ -24,6 +24,7 @@ export interface TaskCommandContext {
   escape: () => void
   focusComposer: () => void
   focusSearch: () => void
+  openPalette: () => void
 }
 
 /**
@@ -207,6 +208,18 @@ export function buildTaskCommands(ctx: TaskCommandContext): Command[] {
       keys: '⇧⌘X',
       group: 'Filters & views',
       run: () => ctx.goTo({ sort: ctx.search.sort }),
+    },
+
+    // ── Help ─────────────────────────────────────────────────────────────
+    {
+      // Hidden from the palette, since it IS the palette; the help overlay
+      // (5.3) lists it like any other key.
+      id: 'open-palette',
+      label: 'Open the command palette',
+      keys: '⌘K',
+      group: 'Help',
+      hidden: true,
+      run: ctx.openPalette,
     },
   ]
 }

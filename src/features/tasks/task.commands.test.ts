@@ -32,6 +32,7 @@ function ctx(over: Partial<TaskCommandContext> = {}): TaskCommandContext {
     escape: vi.fn(),
     focusComposer: vi.fn(),
     focusSearch: vi.fn(),
+    openPalette: vi.fn(),
     ...over,
   }
 }
