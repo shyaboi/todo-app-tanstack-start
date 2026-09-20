@@ -7,6 +7,8 @@ import {
   createRootRouteWithContext,
 } from '@tanstack/react-router'
 
+import { RouteError } from '~/shared/components/RouteError'
+import { ToastHost } from '~/shared/components/ToastHost'
 import appCss from '~/styles/app.css?url'
 import styles from './__root.module.css'
 
@@ -25,6 +27,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   }),
   shellComponent: RootDocument,
   notFoundComponent: NotFound,
+  /* The last line of defence. Without it the router falls back to a bare
+     "Something went wrong!" with a "Show Error" toggle -- the exact thing
+     system design 12 says never to show. Routes closer to the failure set
+     their own; this one catches whatever they do not. */
+  errorComponent: RouteError,
 })
 
 /* Without this, TanStack Router falls back to a bare "Not Found" paragraph
@@ -51,6 +58,9 @@ function RootDocument({ children }: { children: ReactNode }) {
       </head>
       <body>
         {children}
+        {/* One host for every page: a failed write is reported the same way
+            wherever it happened (PLAN.md 4.2). */}
+        <ToastHost />
         <Scripts />
       </body>
     </html>

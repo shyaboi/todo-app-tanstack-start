@@ -62,17 +62,12 @@ export function TaskComposer() {
     if (parsed.dueAt) input.dueAt = parsed.dueAt
 
     setError(null)
-    create.mutate(input, {
-      onSuccess: () => setText(''),
-      onError: (err: unknown) =>
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Could not save that. Try again.',
-        ),
-    })
-    // Cleared optimistically so the next task can be typed immediately; the
-    // error path puts the text back.
+    /* Cleared at once so the next task can be typed immediately. A failure is
+       not reported here: the mutation hook rolls the cache back and raises
+       the failure toast, whose Retry re-sends exactly this input. The message
+       under the field is for validation, which happens before anything is
+       sent. */
+    create.mutate(input)
     setText('')
   }
 

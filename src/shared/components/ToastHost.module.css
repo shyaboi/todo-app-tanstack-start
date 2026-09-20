@@ -1,0 +1,89 @@
+/* Bottom-right, stacked. The undo toast sits bottom-centre; the two never
+   overlap, and a failure is not mistaken for the confirmation it is not. */
+.host {
+  position: fixed;
+  right: var(--space-6);
+  bottom: var(--space-6);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(420px, calc(100vw - var(--space-8)));
+}
+
+.toast {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--ink);
+  color: var(--surface);
+  border-left: 4px solid var(--rust-400);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-dialog);
+}
+
+.message {
+  font: var(--text-body);
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.action {
+  height: var(--control-height-sm);
+  padding: 0 var(--space-3);
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--surface);
+  font: var(--text-small);
+  font-weight: 600;
+  transition: background-color var(--motion-fast) var(--ease);
+}
+
+.action:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.action:focus-visible {
+  outline: 2px solid var(--surface);
+  outline-offset: 2px;
+}
+
+.action:last-child {
+  margin-inline-start: auto;
+}
+
+.primary {
+  background: var(--surface);
+  color: var(--ink);
+  border-color: var(--surface);
+}
+
+.primary:hover {
+  background: var(--sunken);
+}
+
+.errorId {
+  font: var(--text-small);
+  color: var(--border);
+}
+
+.errorId code {
+  font: var(--text-mono);
+  color: var(--surface);
+}
+
+@media (max-width: 640px) {
+  .host {
+    right: var(--space-4);
+    left: var(--space-4);
+    bottom: var(--space-4);
+    width: auto;
+  }
+}

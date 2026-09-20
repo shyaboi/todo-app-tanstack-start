@@ -22,7 +22,15 @@ export default defineConfig({
           environment: 'jsdom',
           globals: true,
           setupFiles: ['./tests/setup.ts'],
-          include: ['src/**/*.test.tsx', 'tests/unit/**/*.test.{ts,tsx}'],
+          /* src/shared is browser-facing code, so its .ts tests run under
+             jsdom too -- keys.ts builds DOM elements to classify targets, and
+             the toast store is read through a React hook. Before this line
+             those files matched neither project and silently never ran. */
+          include: [
+            'src/**/*.test.tsx',
+            'src/shared/**/*.test.ts',
+            'tests/unit/**/*.test.{ts,tsx}',
+          ],
           exclude: ['src/server/**', '**/*.integration.test.*'],
         },
       },
