@@ -124,17 +124,44 @@ test('Escape drops a lifted card without moving it', async ({ page }) => {
   await expect(column(page, 'To do').getByText(title)).toBeVisible()
 })
 
-test('↵ opens the card in the list’s detail panel', async ({ page }) => {
+test('↵ opens the card without leaving the board', async ({ page }) => {
   const title = uniqueTitle('board open')
   await boardWith(page, title)
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/\/t\/[0-9a-f]{24}/)
+
+  // The board's own slot, not the list's (PLAN.md 8.4b).
+  await expect(page).toHaveURL(/\/board\/t\/[0-9a-f]{24}/)
+  const panel = page.getByRole('complementary', { name: 'Task details' })
+  await expect(panel.getByLabel('Title')).toHaveValue(title)
+  // The board is still there behind it, with its columns.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Board')
+  await expect(column(page, 'To do')).toBeVisible()
+  await expect(card(page, title)).toBeVisible()
+
+  // Escape closes it and puts focus back on the card.
+  await page.keyboard.press('Escape')
+  await expect(panel).toHaveCount(0)
+  await expect(page).toHaveURL(/\/board$/)
+  await expect(card(page, title)).toBeFocused()
+})
+
+test('a board deep link renders the board behind the panel', async ({
+  page,
+}) => {
+  await signIn(page)
+  await gotoHydrated(page, '/board')
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  const url = page.url()
+
+  const fresh = await page.context().newPage()
+  await fresh.goto(url)
+  await expect(fresh.getByRole('heading', { level: 1 })).toHaveText('Board')
   await expect(
-    page
-      .getByRole('complementary', { name: 'Task details' })
-      .getByLabel('Title'),
-  ).toHaveValue(title)
+    fresh.getByRole('complementary', { name: 'Task details' }),
+  ).toBeVisible()
+  await fresh.close()
 })
 
 test('V switches between the views, and a bare visit remembers the last one', async ({
