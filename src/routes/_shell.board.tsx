@@ -17,7 +17,7 @@ import { Board, toColumns } from '~/features/tasks/components/Board'
 import type { BoardControls } from '~/features/tasks/components/Board'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
 import { ModeHint } from '~/features/tasks/components/ModeHint'
-import { AccountBar } from '~/features/auth/components/AccountBar'
+import { AccountBar, GuestNote } from '~/features/auth/components/AccountBar'
 import { BottomNav } from '~/features/tasks/components/BottomNav'
 import styles from './_shell.board.module.css'
 
@@ -212,6 +212,7 @@ function BoardPage() {
         <div className={styles.bar}>
           <AccountBar />
         </div>
+        <GuestNote />
 
         <header className={styles.header}>
           <h1 className={styles.title}>Board</h1>

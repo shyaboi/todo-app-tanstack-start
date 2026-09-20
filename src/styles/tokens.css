@@ -64,6 +64,12 @@
   --space-10: 40px;
   --space-16: 64px;
 
+  /* The page gutter. One token because the top bar and the list beneath it
+     must agree on where content starts, and they drifted apart the first
+     time they each named their own padding. Fluid: 16px on a phone, 40px on
+     a wide screen, so the list runs to the edges without touching them. */
+  --gutter: clamp(16px, 3vw, 40px);
+
   /* ── Shape ───────────────────────────────────────────────────────────── */
   --radius-kbd: 6px;
   --radius-control: 9px;

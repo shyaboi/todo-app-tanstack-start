@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { AccountBar } from '~/features/auth/components/AccountBar'
+import { AccountBar, GuestNote } from '~/features/auth/components/AccountBar'
 import { listsQuery } from '~/features/lists/list.query'
 import { listName } from '~/features/lists/list.types'
 import { tasksQuery } from '../task.query'
@@ -77,7 +77,7 @@ export function TopBar({
               strokeLinecap="round"
             />
           </svg>
-          Filters
+          <span className={styles.filtersLabel}>Filters</span>
           {active.length > 0 && (
             <span className={styles.badge}>{active.length}</span>
           )}
@@ -87,6 +87,8 @@ export function TopBar({
           <AccountBar />
         </div>
       </div>
+
+      <GuestNote />
 
       {/* What is narrowing the view, when the panel is shut. Each chip removes
           its own filter, so nothing has to be opened to undo it. */}

@@ -157,6 +157,38 @@
   color: var(--secondary);
 }
 
+/* The same chip the list row uses, so a list looks like itself in both views
+   (PLAN.md 8.4c). Accent by the list's position, never a hue per list. */
+.listName {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.listDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+  background: var(--meta);
+}
+
+.listName[data-accent='0'] .listDot {
+  background: var(--rust-600);
+}
+
+.listName[data-accent='1'] .listDot {
+  background: var(--pine-600);
+}
+
+.listName[data-accent='2'] .listDot {
+  background: var(--rust-400);
+}
+
+.listName[data-accent='3'] .listDot {
+  background: var(--pine-400);
+}
+
 .due {
   font-variant-numeric: tabular-nums;
 }

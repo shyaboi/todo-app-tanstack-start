@@ -8,7 +8,9 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-6);
+  /* The same gutter the list uses, so the search field starts exactly where
+     a task title starts. One token, no drift. */
+  padding: var(--space-3) var(--gutter);
   background: var(--canvas);
   border-bottom: 1px solid var(--hairline);
 }
@@ -58,9 +60,11 @@
   font: var(--text-micro);
 }
 
+/* Pushed to the end, and never the item that gives way: it is already as
+   small as its own words. */
 .account {
   margin-inline-start: auto;
-  min-width: 0;
+  flex-shrink: 0;
 }
 
 .active {
@@ -127,7 +131,7 @@
    controls, so nothing is squeezed to unreadable. */
 @media (max-width: 640px) {
   .bar {
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--gutter);
   }
 
   .row {
@@ -145,7 +149,16 @@
     padding: 0 var(--space-2);
   }
 
-  .filters span:not([class]) {
-    display: none;
+  /* Hidden from the eye, not from the accessible name -- display:none would
+     leave an icon button called nothing at all. */
+  .filtersLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 }

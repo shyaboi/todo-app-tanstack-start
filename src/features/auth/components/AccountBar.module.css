@@ -1,26 +1,22 @@
+/* A toolbar control, not a banner: it sits in a row with search, sort and
+   filters, so it takes only the width its own words need. */
 .bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  flex-wrap: wrap;
-  padding: var(--space-2) var(--space-3);
-  background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-row);
+  gap: var(--space-2);
+  min-width: 0;
 }
 
-/* A guest's tasks live behind one cookie, so the invitation to keep them is
-   stated plainly rather than hidden in a menu. */
-.guest {
-  background: var(--rust-50);
-  border-color: var(--rust-200);
-}
-
-.message {
+.who {
   font: var(--text-small);
   color: var(--secondary);
+  /* Only this truncates. An address can be any length; the buttons beside it
+     must never be the thing that gets squeezed out. */
   min-width: 0;
+  max-width: 26ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .email {
@@ -28,8 +24,15 @@
   color: var(--ink);
 }
 
-.actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
+/* The sentence version, on its own line under the bar. */
+.note {
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+@media (max-width: 640px) {
+  /* "Signed in as" is the part a phone can do without; the address is not. */
+  .who {
+    max-width: 18ch;
+  }
 }

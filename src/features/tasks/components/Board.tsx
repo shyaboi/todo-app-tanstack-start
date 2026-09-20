@@ -3,7 +3,7 @@ import { PriorityPill } from '~/shared/components/Pill'
 import { useQuery } from '@tanstack/react-query'
 import { listsQuery } from '~/features/lists/list.query'
 import { useEntering } from '~/shared/hooks/useEntering'
-import { listName } from '~/features/lists/list.types'
+import { listAccent, listName } from '~/features/lists/list.types'
 import { STATUS_LABEL, TASK_STATUSES } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
 import { isTempId } from '../task.query'
@@ -192,7 +192,11 @@ function BoardCard({
 
       <div className={styles.meta}>
         {task.listId && (
-          <span className={styles.listName}>
+          <span
+            className={styles.listName}
+            data-accent={listAccent(lists, task.listId)}
+          >
+            <span className={styles.listDot} aria-hidden="true" />
             {listName(lists, task.listId)}
           </span>
         )}

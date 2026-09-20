@@ -8,7 +8,7 @@ import { useEntering } from '~/shared/hooks/useEntering'
 import { displayKeys } from '~/shared/lib/keys'
 import { useQuery } from '@tanstack/react-query'
 import { listsQuery } from '~/features/lists/list.query'
-import { listName } from '~/features/lists/list.types'
+import { listAccent, listName } from '~/features/lists/list.types'
 import { isTempId, useUpdateTask } from '../task.query'
 import type { Task, TaskStatus } from '../task.types'
 import type { TaskGroup } from '../task.filters'
@@ -259,14 +259,6 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
    during render makes the server and the client disagree about a row's
    class -- a hydration mismatch (Failure Check 8). Date granularity is stable
    across both renders. */
-/* Four accents from the palette, assigned by a list's position in the owner's
-   own order. Stable for a given set of lists, and never a colour the design
-   does not already contain (PLAN.md 4.6). */
-function listAccent(lists: readonly { id: string }[], listId: string): string {
-  const i = lists.findIndex((l) => l.id === listId)
-  return String(i < 0 ? 0 : i % 4)
-}
-
 function startOfToday(): number {
   const d = new Date()
   d.setHours(0, 0, 0, 0)
