@@ -14,11 +14,11 @@ Two source documents were supplied for this build and they disagree in about a d
 
 The brief asked for the AI planning work to be shared, so here is the whole provenance rather than a summary of it.
 
-|                              |                                                              |
-| ---------------------------- | ------------------------------------------------------------ |
-| **Front-end design**         | <https://claude.ai/artifact/TAEbYaNPfRfZFFwUPgSaKK>          |
-| **System planning**          | <https://chatgpt.com/c/6aaedbf8-cf04-83ea-aad6-8ce7d09e5448> |
-| **The plan built from both** | [PLAN.md](PLAN.md)                                           |
+|                              |                                                                  |
+| ---------------------------- | ---------------------------------------------------------------- |
+| **Front-end design**         | <https://claude.ai/artifact/TAEbYaNPfRfZFFwUPgSaKK>              |
+| **System planning**          | <https://chatgpt.com/share/6aaf8982-be08-83ea-951d-85a06d32a9bb> |
+| **The plan built from both** | [PLAN.md](PLAN.md)                                               |
 
 The two design files in this repo are that Claude artifact, exported — not a rewrite of it, not notes about it:
 
