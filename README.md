@@ -8,6 +8,29 @@ Two source documents were supplied for this build and they disagree in about a d
 
 ---
 
+## Live app, and where it came from
+
+**Deployed:** <https://todo-app-tanstack-start.vercel.app/>
+
+The brief asked for the AI planning work to be shared, so here is the whole provenance rather than a summary of it.
+
+|                              |                                                              |
+| ---------------------------- | ------------------------------------------------------------ |
+| **Front-end design**         | <https://claude.ai/artifact/TAEbYaNPfRfZFFwUPgSaKK>          |
+| **System planning**          | <https://chatgpt.com/c/6aaedbf8-cf04-83ea-aad6-8ce7d09e5448> |
+| **The plan built from both** | [PLAN.md](PLAN.md)                                           |
+
+The two design files in this repo are that Claude artifact, exported — not a rewrite of it, not notes about it:
+
+- [Tasker — To-Do App FE Design.html](Tasker%20%E2%80%94%20To-Do%20App%20FE%20Design.html)
+- [Tasker — To-Do App FE Design.pdf](Tasker%20%E2%80%94%20To-Do%20App%20FE%20Design.pdf)
+
+They are thirteen screens: List, Board, Detail, Composer, Search & Filters, Command Palette, Keyboard Map, States, Mobile ×2, Foundations, Components and Architecture. Everything in [Design decisions](#design-decisions) is a place where those screens and the ChatGPT system design asked for different things, and [PLAN.md](PLAN.md) §3 is where each disagreement was settled before any code was written.
+
+They are committed on purpose. A reviewer should be able to hold the design and the running app side by side and see both what was matched and what was cut.
+
+---
+
 ## Run it in five minutes
 
 Requires **Node 22+** and a MongoDB connection string (Atlas free tier is fine).
@@ -188,6 +211,37 @@ To check by hand on the deployed app: View Source and search for the cluster hos
 
 ---
 
+## Security audit
+
+The finished app was attacked rather than reviewed. Everything below was reproduced against a running instance before it was written down.
+
+**Found and fixed:**
+
+|        | Finding                                       | What it was                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **S1** | Session fixation — **high**                   | Signing up _claims_ the guest row, so the user id does not change. The token issued before authentication was never revoked, and the pre-sign-up cookie — replayed in a clean browser — read the finished account's tasks. Rotating the token was only half the defence; the old rows are now destroyed on the privilege transition. Signing in to an account that already exists still leaves other sessions alone, because those are the owner's other devices.                           |
+| **S2** | Account enumeration, two oracles — **medium** | Six wrong guesses answered "Too many attempts" for a registered address and the generic message for an unregistered one. Worse, _every_ wrong guess took 315ms against a real account and 213ms against an unknown one, because only the real path writes an attempt counter — so the careful dummy-hashing was equalising the CPU while the database round trip gave the answer away. Now: one message for every rejection, and a 400ms floor that removes the difference by construction. |
+| **S4** | No security headers — **medium**              | The app shipped none. CSP, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, HSTS and `Permissions-Policy` now come from the server, so they travel with the code instead of a host dashboard.                                                                                                                                                                                                                                                                                        |
+| **S6** | Orphaned sessions — **low**                   | A guest's session rows outlived the guest. Inert, but unbounded.                                                                                                                                                                                                                                                                                                                                                                                                                            |
+
+**Found and planned** ([PLAN.md](PLAN.md) Sprint 9):
+
+- **S3, unthrottled guest creation — medium.** Every cookie-less request mints a user row and a session row, unauthenticated: 30 accounts in 1.9 seconds from one laptop. On a free Atlas tier that is a storage-quota outage. The fix stays inside the no-second-datastore constraint — a TTL'd `rate_limits` collection, plus a shorter guest TTL.
+- **S5, lockout as a denial of service — low.** Five wrong attempts lock a known address for fifteen minutes, repeatable. Since S2, the person it happens to is no longer told why. Both want the same answer — reset by email — which needs a mail service this build deliberately has no dependency on.
+- **S7, `/_dev/components` ships in production — informational.**
+
+**Confirmed clean, by test rather than by assumption:**
+
+- **Stored XSS.** Six payloads — `</script><img onerror>`, `"><svg onload>`, script-breakouts, U+2028 — stored and re-rendered through JSX text, HTML attributes and the seroval-dehydrated `<script>`. Every one escaped; no dialog, no stray node, no page error.
+- **NoSQL operator injection.** Eight payloads through the URL: `?q[$ne]=null`, `?list={"$gt":""}`, `?sort[$where]=1`. All neutralised, and `?q=.*` matches nothing rather than everything. Inputs are `z.strictObject`, ids are regex-checked before `new ObjectId`, `$set` is built field by field, and search text is escaped and only ever used as a value.
+- **IDOR.** Another owner's task id returns "That task is not here" on both detail slots and anonymously — indistinguishable from an id that never existed.
+- **CSRF.** A server function called from another origin is refused, asserted against the built server.
+- **Dependencies.** `npm audit`, 0 vulnerabilities.
+
+S1 and S2 have regression tests in `tests/e2e/auth.spec.ts`. The headers are gated in the artifact tier rather than in Playwright, because `vite dev` does not run through nitro and a spec against the dev server could never see them.
+
+---
+
 ## Deploying
 
 The app builds to a nitro server. On Vercel it emits `.vercel/output`; anywhere else, `.output/server/index.mjs`, started with `npm start`.
@@ -224,7 +278,7 @@ Honest list, in the order they would be worth closing:
 
 - **The offline queue (D6)** is the largest designed-but-absent feature.
 - **Pagination.** `listTasks` caps at 500 documents. The seam is there; nothing above it pages.
-- **The `/_dev/components` route ships in the production bundle.** It is the component inventory used during the build. Harmless, and a few KB.
+- **The `/_dev/components` route ships in the production bundle.** It is the component inventory used during the build. Harmless, and a few KB -- S7 in the audit above.
 - **Lighthouse is not gated in CI.** On a shared runner its timings vary by more than the 1.0s budget, so it would fail for reasons unrelated to the change under review. The artifact tier gates the server's own render time instead, which is the part this repo controls.
 - **Row-removal motion is absent.** The list is handed an already-filtered array, so it cannot tell a delete from a search keystroke — and an exit animation that fires on every keystroke is worse than none.
 

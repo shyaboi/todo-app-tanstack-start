@@ -146,6 +146,38 @@ describe('the built server', () => {
     )
   })
 
+  it('sends the security headers on every response', async () => {
+    /* Gated HERE rather than in Playwright because `vite dev` does not run
+       through nitro, so the headers are absent in development and a spec
+       against the dev server could never see them. The built artifact is
+       where they exist and where they matter (PLAN.md 9.1).
+
+       The app shipped none of these until the Sprint 9 audit. `frame-ancestors`
+       is the one that closes a real hole: this is a cookie-authenticated app
+       where one click deletes a task. */
+    const res = await fetch(base + '/')
+    const header = (name: string) => res.headers.get(name) ?? '(absent)'
+
+    expect(header('x-frame-options')).toBe('DENY')
+    expect(header('x-content-type-options')).toBe('nosniff')
+    expect(header('referrer-policy')).toBe('strict-origin-when-cross-origin')
+    expect(header('strict-transport-security')).toContain('max-age=')
+    expect(header('permissions-policy')).toContain('camera=()')
+
+    const csp = header('content-security-policy')
+    for (const directive of [
+      "default-src 'self'",
+      "frame-ancestors 'none'",
+      "object-src 'none'",
+      "base-uri 'none'",
+      "form-action 'self'",
+    ]) {
+      expect(`csp: ${directive}`).toBe(
+        csp.includes(directive) ? `csp: ${directive}` : `csp is missing it`,
+      )
+    }
+  })
+
   it('refuses a server function called from another origin', async () => {
     /* The cookie is SameSite=Lax, which stops a cross-site form post
        (PLAN.md 4.8). This is the second lock on the same door, and it is the

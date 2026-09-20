@@ -164,3 +164,84 @@ test.describe('credentials', () => {
     )
   })
 })
+
+/* Regressions for the Sprint 9 audit (PLAN.md 9.1). Both of these were real,
+   reproduced against a running app, and both are the kind of bug that comes
+   back quietly when someone refactors the sign-in path. */
+test.describe('the audit findings stay fixed', () => {
+  test('a token issued before sign-up cannot read the account after it', async ({
+    browser,
+  }) => {
+    /* Session fixation. Signing up CLAIMS the guest row, so the user id does
+       not change -- and a token captured beforehand used to keep resolving to
+       it, which meant anyone who could plant a cookie owned the finished
+       account. Rotating the token was never enough on its own; the old rows
+       have to be destroyed. */
+    const victim = await browser.newContext()
+    const page = await victim.newPage()
+    await gotoHydrated(page)
+
+    const title = uniqueTitle('before the account existed')
+    await createTask(page, title)
+
+    const before = (await victim.cookies()).find(
+      (c) => c.name === 'tasker_session',
+    )
+    expect(before?.value).toBeTruthy()
+
+    const email = `fixation-${Date.now()}@example.com`
+    await page.getByRole('link', { name: 'Create account' }).click()
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password').fill('a-long-enough-password')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await expect(page.getByText(email)).toBeVisible()
+
+    // Replay the pre-authentication token in a browser that has never been here.
+    const attacker = await browser.newContext()
+    await attacker.addCookies([{ ...before!, value: before!.value }])
+    const stolen = await attacker.newPage()
+    await gotoHydrated(stolen)
+
+    await expect(stolen.getByText(email)).toHaveCount(0)
+    await expect(stolen.getByText(title, { exact: true })).toHaveCount(0)
+    // It is a fresh guest, which is what an unknown token should produce.
+    await expect(stolen.getByText('You are not signed in')).toBeVisible()
+
+    await victim.close()
+    await attacker.close()
+  })
+
+  test('a locked account is indistinguishable from one that does not exist', async ({
+    page,
+  }) => {
+    /* Account enumeration. Six wrong guesses used to answer "Too many
+       attempts" for a registered address and the generic message for an
+       unregistered one, which made the form the account directory that every
+       other decision in auth.service works to avoid. */
+    const real = `enum-${Date.now()}@example.com`
+    const fake = `nobody-${Date.now()}@example.com`
+
+    await gotoHydrated(page, '/sign-up')
+    await page.getByLabel('Email').fill(real)
+    await page.getByLabel('Password').fill('a-long-enough-password')
+    await page.getByRole('button', { name: 'Create account' }).click()
+    await expect(page.getByText(real)).toBeVisible()
+
+    /** Six wrong passwords -- one past the lockout threshold. */
+    async function hammer(email: string): Promise<string> {
+      let last = ''
+      for (let i = 0; i < 6; i++) {
+        await gotoHydrated(page, '/sign-in')
+        await page.getByLabel('Email').fill(email)
+        await page.getByLabel('Password').fill(`wrong-password-${i}-aaaaaaaa`)
+        await page.getByRole('button', { name: 'Sign in' }).click()
+        const alert = page.getByRole('alert')
+        await expect(alert).toBeVisible()
+        last = (await alert.innerText()).trim()
+      }
+      return last
+    }
+
+    expect(await hammer(real)).toBe(await hammer(fake))
+  })
+})
