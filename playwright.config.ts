@@ -9,7 +9,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
@@ -18,10 +18,15 @@ export default defineConfig({
        process itself and it wins over anything Playwright passes in, so the
        env option here silently did nothing and tests wrote to the real
        database. A mode-specific .env.e2e is the one thing Vite ranks above
-       .env. CI has no .env at all and sets the variables directly. */
+       .env. CI has no .env at all and sets the variables directly.
+
+       Its own port, and never a reused server. With reuse on, a developer's
+       `npm run dev` still listening on 3000 was silently adopted -- mode and
+       database included -- and the suite wrote to the real database. On 3001
+       with strictPort, a collision fails loudly instead. */
     command: 'npm run dev:e2e',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    url: 'http://localhost:3001',
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 })
