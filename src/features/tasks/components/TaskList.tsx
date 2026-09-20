@@ -81,6 +81,8 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
 
   const className = [
     styles.row,
+    // The leading rule's colour: the design codes a row by its status.
+    styles[task.status],
     selected && styles.selected,
     task.status === 'done' && styles.done,
     creating && styles.pending,
@@ -120,7 +122,15 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
 
       <span className={styles.meta}>
         {task.listId && (
-          <span className={styles.listName}>
+          /* A coloured chip rather than bare text: the design colour-codes
+             lists, and the accent comes from the palette rather than a hue
+             invented per list. The name is always there, so the colour is
+             never carrying the meaning on its own. */
+          <span
+            className={styles.listChip}
+            data-accent={listAccent(lists, task.listId)}
+          >
+            <span className={styles.listDot} aria-hidden="true" />
             {listName(lists, task.listId)}
           </span>
         )}
@@ -146,6 +156,30 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
         {(creating || update.isPending) && (
           <span className={styles.saving}>Saving…</span>
         )}
+
+        {/* The design draws a pencil on the row. E does the same thing, and
+            so does clicking the title -- one edit, three ways in. */}
+        <Button
+          variant="ghost"
+          size="small"
+          iconOnly
+          className={styles.rowAction}
+          disabled={creating}
+          aria-label={`Rename "${task.title}"`}
+          title={`Rename · ${displayKeys('E', platform)}`}
+          onClick={() => controls.onEditingChange(task.id, true)}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4 20h4l10-10-4-4L4 16v4ZM14 6l4 4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Button>
 
         <Button
           variant="ghost"
@@ -221,6 +255,14 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
    during render makes the server and the client disagree about a row's
    class -- a hydration mismatch (Failure Check 8). Date granularity is stable
    across both renders. */
+/* Four accents from the palette, assigned by a list's position in the owner's
+   own order. Stable for a given set of lists, and never a colour the design
+   does not already contain (PLAN.md 4.6). */
+function listAccent(lists: readonly { id: string }[], listId: string): string {
+  const i = lists.findIndex((l) => l.id === listId)
+  return String(i < 0 ? 0 : i % 4)
+}
+
 function startOfToday(): number {
   const d = new Date()
   d.setHours(0, 0, 0, 0)

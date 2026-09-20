@@ -15,13 +15,43 @@
   padding: var(--space-2) var(--space-3);
   background: var(--surface);
   border: 1px solid var(--hairline);
+  /* The leading rule the design draws down each row, coloured by status.
+     Applied as a border so it hugs the radius and costs no element. */
+  border-left-width: 3px;
+  border-left-color: var(--border-strong);
   border-radius: var(--radius-row);
   box-shadow: var(--shadow-row);
-  transition: border-color var(--motion-fast) var(--ease);
+}
+
+/* Status, as colour AND as the pill that says it in words. */
+.todo {
+  border-left-color: var(--border-strong);
+}
+
+.doing {
+  border-left-color: var(--rust-600);
+}
+
+.done {
+  border-left-color: var(--pine-600);
 }
 
 .row:hover {
   border-color: var(--border);
+  border-left-color: inherit;
+}
+
+/* Hover keeps the status rule: only the other three edges darken. */
+.row.todo:hover {
+  border-left-color: var(--border-strong);
+}
+
+.row.doing:hover {
+  border-left-color: var(--rust-600);
+}
+
+.row.done:hover {
+  border-left-color: var(--pine-600);
 }
 
 /* Only the title truncates. Metadata never collapses, so scanning stays
@@ -43,10 +73,47 @@
   flex-shrink: 0;
 }
 
-.listName {
+/* The list, as a chip with an accent dot. Four accents, all from the
+   palette; the name is always present, so the colour is decoration. */
+.listChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--sunken);
   font: var(--text-small);
-  color: var(--meta);
+  color: var(--secondary);
   flex-shrink: 0;
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.listDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  flex-shrink: 0;
+  background: var(--meta);
+}
+
+.listChip[data-accent='0'] .listDot {
+  background: var(--rust-600);
+}
+
+.listChip[data-accent='1'] .listDot {
+  background: var(--pine-600);
+}
+
+.listChip[data-accent='2'] .listDot {
+  background: var(--rust-400);
+}
+
+.listChip[data-accent='3'] .listDot {
+  background: var(--pine-400);
 }
 
 .due {
@@ -139,11 +206,36 @@
   touch-action: pan-y;
 }
 
+/* ── Motion (PLAN.md 4.6, 8.4d). 120ms on hover, 240ms for a row arriving.
+   Nothing animates on load: the animation is on the row, and a page-load
+   render mounts them all at once, so `animation-delay` is deliberately not
+   staggered -- it would turn a refresh into a performance. */
 @media (prefers-reduced-motion: no-preference) {
   .row {
     transition:
       border-color var(--motion-fast) var(--ease),
+      background-color var(--motion-fast) var(--ease),
       transform var(--motion-fast) var(--ease);
+  }
+
+  .list > .row {
+    animation: rowIn var(--motion-sheet) var(--ease) both;
+  }
+
+  @keyframes rowIn {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+  }
+}
+
+/* The token contract, stated where it is easiest to break: reduced motion
+   means none, not less. */
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    transition: none;
+    animation: none;
   }
 }
 
@@ -170,8 +262,14 @@
 
 /* The selection tint is --sunken, and --meta only clears 4.5:1 on --surface
    (4.32 here). The row's small text steps up one shade while selected. */
-.selected .listName,
+.selected .listChip,
 .selected .due:not(.overdue),
 .selected .saving {
   color: var(--secondary);
+}
+
+/* The chip's own fill is --sunken, which is also the selected row's fill --
+   it would disappear exactly when the row is being looked at. */
+.selected .listChip {
+  background: var(--surface);
 }
