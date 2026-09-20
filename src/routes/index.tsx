@@ -3,6 +3,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 
 import { UndoToast } from '~/shared/components/UndoToast'
+import { AccountBar } from '~/features/auth/components/AccountBar'
+import { viewerQuery } from '~/features/auth/auth.query'
 import {
   tasksQuery,
   useDeleteTask,
@@ -19,7 +21,14 @@ export const Route = createFileRoute('/')({
      lifecycle and cache. `ensureQueryData` populates the cache during SSR, and
      the component below reads from that same cache -- one source of truth,
      not a loader copy and a query copy (Failure Check 1). */
-  loader: ({ context }) => context.queryClient.ensureQueryData(tasksQuery),
+  /* Both, in parallel. The identity is needed to render the account bar on the
+     server rather than flashing the guest state and correcting it after
+     hydration; the list is the page itself. */
+  loader: ({ context }) =>
+    Promise.all([
+      context.queryClient.ensureQueryData(tasksQuery),
+      context.queryClient.ensureQueryData(viewerQuery),
+    ]),
   component: TasksPage,
 })
 
@@ -60,6 +69,8 @@ function TasksPage() {
         </p>
       </header>
 
+      <AccountBar />
+
       <TaskComposer />
 
       {tasks.length === 0 ? (
@@ -67,7 +78,7 @@ function TasksPage() {
           <p className={styles.emptyTitle}>Nothing here yet</p>
           <p className={styles.emptyBody}>
             Add your first task above. Search, filters and the command palette
-            arrive in Sprints 3 and 4.
+            arrive in Sprints 4 and 5.
           </p>
         </div>
       ) : (

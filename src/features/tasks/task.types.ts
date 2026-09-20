@@ -56,6 +56,11 @@ export function listName(id: ListId | null): string | null {
  * Never a driver document: the repository maps `WithId<Document>` into this at
  * the boundary, so no React component depends on Mongo's shapes
  * (system design Failure Check 5).
+ *
+ * Note the absence of `ownerId`. It exists in storage and in every query
+ * filter, but every task the client can see belongs to the caller by
+ * construction, so sending it would add no information -- and a field the
+ * client never receives is one it can never be tempted to send back.
  */
 export interface Task {
   /** Server-generated. Opaque to the client. */

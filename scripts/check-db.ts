@@ -5,11 +5,8 @@ export {}
 
 // Must happen before src/server/env is imported, so the import is dynamic.
 // In CI the variables come from the real environment and there is no .env.
-try {
-  process.loadEnvFile('.env')
-} catch {
-  // No .env file; fall through to the ambient environment.
-}
+const { loadEnv } = await import('./load-env')
+loadEnv()
 
 const { getDb, closeClient } = await import('../src/server/db')
 const { toSafeError } = await import('../src/server/errors')

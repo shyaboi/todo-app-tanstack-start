@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb'
 import { AppError, toSafeError } from '~/server/errors'
 import { logger } from '~/server/logger'
 import { randomUUID } from 'node:crypto'
+import { ObjectId as ObjectIdCtor } from 'mongodb'
 import { tasks, trash, toTask, ensureIndexes } from './task.repo'
 import type { Sort } from 'mongodb'
 import type { TaskDoc } from './task.repo'
@@ -13,7 +14,16 @@ import type { listTasksInput, taskPatch } from './task.schema'
 
 /* Domain operations. Validation has already happened at the server-function
    boundary, so everything arriving here is parsed and trusted; everything
-   leaving is a mapped DTO. Driver errors are converted before they escape. */
+   leaving is a mapped DTO. Driver errors are converted before they escape.
+
+   PERMISSIONS LIVE HERE. Every function takes an ownerId and puts it in the
+   query FILTER, so a task belonging to someone else does not match and is
+   indistinguishable from one that never existed. Enforcing this in a route
+   guard or by filtering after the fetch would not be enforcement at all:
+   updateTask takes an id, and an id is guessable (PLAN.md 4.8).
+
+   A wrong owner therefore yields NOT_FOUND rather than FORBIDDEN. FORBIDDEN
+   would confirm the task exists, which tells an attacker their guess landed. */
 
 type ListFilters = z.output<typeof listTasksInput>
 type Patch = z.output<typeof taskPatch>
@@ -50,12 +60,18 @@ export function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function listTasks(filters: ListFilters = {}): Promise<Task[]> {
+export function listTasks(
+  ownerId: string,
+  filters: ListFilters = {},
+): Promise<Task[]> {
   return run('listTasks', undefined, async () => {
     await ensureIndexes()
     const col = await tasks()
 
-    const query: Record<string, unknown> = {}
+    // Owner first: this is a filter, not a post-fetch sieve.
+    const query: Record<string, unknown> = {
+      ownerId: new ObjectIdCtor(ownerId),
+    }
 
     if (filters.status?.length) query.status = { $in: filters.status }
     if (filters.listId) query.listId = filters.listId
@@ -94,13 +110,18 @@ function dueRange(due: ListFilters['due']): Record<string, unknown> | null {
   return { $ne: null, $lte: endOfWeek }
 }
 
-export function createTask(input: CreateTaskParsed): Promise<Task> {
+export function createTask(
+  ownerId: string,
+  input: CreateTaskParsed,
+): Promise<Task> {
   return run('createTask', undefined, async () => {
     const col = await tasks()
     // Timestamps and id are generated here. The client supplies neither, and
     // the schema rejects the attempt (system design 5).
     const now = new Date()
     const doc: TaskDoc = {
+      // From the session, never from the request body.
+      ownerId: new ObjectIdCtor(ownerId),
       title: input.title,
       notes: input.notes,
       status: input.status,
@@ -115,7 +136,11 @@ export function createTask(input: CreateTaskParsed): Promise<Task> {
   })
 }
 
-export function updateTask(id: string, patch: Patch): Promise<Task> {
+export function updateTask(
+  ownerId: string,
+  id: string,
+  patch: Patch,
+): Promise<Task> {
   return run('updateTask', id, async () => {
     const col = await tasks()
 
@@ -131,7 +156,7 @@ export function updateTask(id: string, patch: Patch): Promise<Task> {
       $set.dueAt = patch.dueAt ? new Date(patch.dueAt) : null
 
     const doc = await col.findOneAndUpdate(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(id), ownerId: new ObjectIdCtor(ownerId) },
       { $set },
       { returnDocument: 'after' },
     )
@@ -142,6 +167,7 @@ export function updateTask(id: string, patch: Patch): Promise<Task> {
 }
 
 export function deleteTask(
+  ownerId: string,
   id: string,
 ): Promise<{ id: string; undoToken: string }> {
   return run('deleteTask', id, async () => {
@@ -150,7 +176,10 @@ export function deleteTask(
     /* findOneAndDelete, not deleteOne: the document is needed to park it for
        undo, and doing both in one round trip means there is no window where
        the task is gone but unrecoverable. */
-    const doc = await col.findOneAndDelete({ _id: new ObjectId(id) })
+    const doc = await col.findOneAndDelete({
+      _id: new ObjectId(id),
+      ownerId: new ObjectIdCtor(ownerId),
+    })
 
     // Deleting something already gone is reported, not silently treated as
     // success: the UI needs to know its optimistic removal was wrong.
@@ -168,10 +197,16 @@ export function deleteTask(
    server-issued. The client never sends the task back, so it cannot alter a
    field on the way through -- the restored task is byte-for-byte the one that
    was deleted, including its original id and createdAt. */
-export function restoreTask(undoToken: string): Promise<Task> {
+export function restoreTask(ownerId: string, undoToken: string): Promise<Task> {
   return run('restoreTask', undefined, async () => {
     const bin = await trash()
-    const entry = await bin.findOneAndDelete({ token: undoToken })
+    /* Scoped as well. An undo token is unguessable, but "unguessable" is not an
+       authorisation model -- one leaked token must not restore a task into
+       someone else's list. */
+    const entry = await bin.findOneAndDelete({
+      token: undoToken,
+      'task.ownerId': new ObjectIdCtor(ownerId),
+    })
 
     if (!entry) {
       throw new AppError(
@@ -186,10 +221,13 @@ export function restoreTask(undoToken: string): Promise<Task> {
   })
 }
 
-export function getTask(id: string): Promise<Task> {
+export function getTask(ownerId: string, id: string): Promise<Task> {
   return run('getTask', id, async () => {
     const col = await tasks()
-    const doc = await col.findOne({ _id: new ObjectId(id) })
+    const doc = await col.findOne({
+      _id: new ObjectId(id),
+      ownerId: new ObjectIdCtor(ownerId),
+    })
     if (!doc) throw new AppError('NOT_FOUND', 'That task no longer exists.')
     return toTask(doc)
   })
