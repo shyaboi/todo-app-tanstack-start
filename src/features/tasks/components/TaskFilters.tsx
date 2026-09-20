@@ -1,4 +1,6 @@
 import { Button } from '~/shared/components/Button'
+import { usePlatform } from '~/shared/hooks/usePlatform'
+import { displayKeys } from '~/shared/lib/keys'
 import { LISTS, STATUS_LABEL, TASK_STATUSES } from '../task.types'
 import type { TaskStatus } from '../task.types'
 import { joinStatus, splitStatus, toFilters } from '../task.search-params'
@@ -41,7 +43,16 @@ export function TaskFilters({
   hidden: number
   onChange: (patch: Partial<TaskSearch>) => void
 }) {
+  const platform = usePlatform()
   const active = splitStatus(search.status)
+  /* Every control here carries its key in a tooltip (design rule: nothing is
+     keyboard-only, and every control shows its key on hover). The keys are
+     resolved for the platform, so a Windows tooltip never promises ⌘. */
+  const hint = (label: string, keys: string) =>
+    `${label} · ${displayKeys(keys, platform)}`
+
+  // The same toggle as ⇧C: hiding done means filtering to the other two.
+  const hidingCompleted = active.length > 0 && !active.includes('done')
 
   function toggleStatus(status: TaskStatus) {
     const next = active.includes(status)
@@ -68,20 +79,39 @@ export function TaskFilters({
         <legend className={styles.legend}>Status</legend>
         <Chip
           pressed={active.length === 0}
+          title={hint('Show all statuses', 'A')}
           onClick={() => onChange({ status: undefined })}
         >
           All <span className={styles.count}>{total}</span>
         </Chip>
-        {TASK_STATUSES.map((status) => (
+        {TASK_STATUSES.map((status, i) => (
           <Chip
             key={status}
             pressed={active.includes(status)}
+            title={hint(`Filter by ${STATUS_LABEL[status]}`, String(i + 1))}
             onClick={() => toggleStatus(status)}
           >
             {STATUS_LABEL[status]}{' '}
             <span className={styles.count}>{counts[status]}</span>
           </Chip>
         ))}
+        {/* The visible control for ⇧C. Same navigation, same one implementation. */}
+        <Chip
+          pressed={hidingCompleted}
+          title={hint(
+            hidingCompleted ? 'Show completed tasks' : 'Hide completed tasks',
+            '⇧C',
+          )}
+          onClick={() =>
+            onChange({
+              status: hidingCompleted
+                ? undefined
+                : joinStatus(['todo', 'doing']),
+            })
+          }
+        >
+          Hide done
+        </Chip>
       </fieldset>
 
       <fieldset className={styles.group}>
@@ -135,7 +165,12 @@ export function TaskFilters({
           </p>
         )}
         {hasActiveFilters(toFilters(search)) && (
-          <Button variant="ghost" size="small" onClick={clearAll}>
+          <Button
+            variant="ghost"
+            size="small"
+            title={hint('Clear every filter and the query', '⇧⌘X')}
+            onClick={clearAll}
+          >
             Clear all
           </Button>
         )}
@@ -150,10 +185,12 @@ export function TaskFilters({
 function Chip({
   pressed,
   onClick,
+  title,
   children,
 }: {
   pressed: boolean
   onClick: () => void
+  title?: string
   children: React.ReactNode
 }) {
   return (
@@ -161,6 +198,7 @@ function Chip({
       type="button"
       className={`${styles.chip} ${pressed ? styles.pressed : ''}`}
       aria-pressed={pressed}
+      title={title}
       onClick={onClick}
     >
       {children}

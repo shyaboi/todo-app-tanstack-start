@@ -1,7 +1,9 @@
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { PriorityPill } from '~/shared/components/Pill'
 import { Button } from '~/shared/components/Button'
 import { ConfirmDialog } from '~/shared/components/ConfirmDialog'
+import { usePlatform } from '~/shared/hooks/usePlatform'
+import { displayKeys } from '~/shared/lib/keys'
 import { isTempId, useUpdateTask } from '../task.query'
 import { listName } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
@@ -10,35 +12,50 @@ import { AdvanceStatusButton, DoneCheckbox } from './StatusControl'
 import { InlineTitle } from './InlineTitle'
 import styles from './TaskList.module.css'
 
+/**
+ * Everything a row needs from the page, in one bag. Selection, the edit in
+ * progress and the pending delete are all page-owned because more than one
+ * thing can drive each of them -- a click here, a keyboard shortcut there --
+ * and they have to agree (PLAN.md 4.5). No context: the plan is explicit that
+ * this is local UI state, passed down.
+ */
+export interface RowControls {
+  selectedId: string | null
+  editingId: string | null
+  confirmingId: string | null
+  onSelect: (id: string) => void
+  onEditingChange: (id: string, editing: boolean) => void
+  onConfirmingChange: (id: string, confirming: boolean) => void
+  /** Raised on confirm. The page owns the mutation, so it survives the row. */
+  onDelete: (task: Task) => void
+}
+
 /* A real list of real list items. Rows are not divs pretending to be buttons
    -- the design's accessibility contract says so explicitly, and it is what
    lets a screen reader announce "list, 10 items". */
 export function TaskList({
   tasks,
-  onDelete,
+  controls,
 }: {
   tasks: Task[]
-  /** Raised on confirm. The page owns the mutation, so it survives the row. */
-  onDelete: (task: Task) => void
+  controls: RowControls
 }) {
   return (
     <ul className={styles.list}>
       {tasks.map((task) => (
-        <TaskRow key={task.id} task={task} onDelete={onDelete} />
+        <TaskRow key={task.id} task={task} controls={controls} />
       ))}
     </ul>
   )
 }
 
-function TaskRow({
-  task,
-  onDelete,
-}: {
-  task: Task
-  onDelete: (task: Task) => void
-}) {
+function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
   const update = useUpdateTask(task.id)
-  const [confirming, setConfirming] = useState(false)
+  const platform = usePlatform()
+
+  const selected = controls.selectedId === task.id
+  const editing = controls.editingId === task.id
+  const confirming = controls.confirmingId === task.id
 
   // An optimistic row has no server id yet, so it cannot be changed or deleted.
   const creating = isTempId(task.id)
@@ -50,6 +67,7 @@ function TaskRow({
 
   const className = [
     styles.row,
+    selected && styles.selected,
     task.status === 'done' && styles.done,
     creating && styles.pending,
   ]
@@ -57,11 +75,23 @@ function TaskRow({
     .join(' ')
 
   return (
-    <li className={className}>
+    /* Focusable but not a Tab stop: ↑↓ move real DOM focus here (roving
+       focus), so the selected row is simply the one that has focus and a
+       screen reader follows it. Tab still walks the controls inside. Focus on
+       any child bubbles up in React, so clicking a button also selects. */
+    <li
+      className={className}
+      tabIndex={-1}
+      data-task-row={task.id}
+      aria-current={selected ? 'true' : undefined}
+      onFocus={() => controls.onSelect(task.id)}
+    >
       <DoneCheckbox task={task} onChange={setStatus} disabled={creating} />
 
       <InlineTitle
         task={task}
+        editing={editing}
+        onEditingChange={(next) => controls.onEditingChange(task.id, next)}
         disabled={creating}
         onSave={(title) => update.mutate({ id: task.id, patch: { title } })}
       />
@@ -102,7 +132,9 @@ function TaskRow({
           // Destructive actions carry a clear accessible name that says WHAT
           // is being deleted -- "Delete" alone is ambiguous in a list.
           aria-label={`Delete "${task.title}"`}
-          onClick={() => setConfirming(true)}
+          // Every visible control shows its key on hover (design rule 03).
+          title={`Delete · ${displayKeys('⌘⌫', platform)}`}
+          onClick={() => controls.onConfirmingChange(task.id, true)}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
             <path
@@ -126,10 +158,10 @@ function TaskRow({
           body={`"${task.title}" will be removed.`}
           note="You can undo for 8 seconds."
           confirmLabel="Delete"
-          onCancel={() => setConfirming(false)}
+          onCancel={() => controls.onConfirmingChange(task.id, false)}
           onConfirm={() => {
-            setConfirming(false)
-            onDelete(task)
+            controls.onConfirmingChange(task.id, false)
+            controls.onDelete(task)
           }}
         />
       )}
@@ -172,11 +204,11 @@ function formatDue(iso: string): string {
    can never disagree with the rows -- both come from the same TaskGroup. */
 export function TaskGroups({
   groups,
-  onDelete,
+  controls,
   now,
 }: {
   groups: TaskGroup[]
-  onDelete: (task: Task) => void
+  controls: RowControls
   now: Date
 }) {
   return (
@@ -185,7 +217,7 @@ export function TaskGroups({
         <GroupSection
           key={group.key}
           group={group}
-          onDelete={onDelete}
+          controls={controls}
           now={now}
         />
       ))}
@@ -195,11 +227,11 @@ export function TaskGroups({
 
 function GroupSection({
   group,
-  onDelete,
+  controls,
   now,
 }: {
   group: TaskGroup
-  onDelete: (task: Task) => void
+  controls: RowControls
   now: Date
 }) {
   const headingId = useId()
@@ -212,7 +244,7 @@ function GroupSection({
           : group.label}
         <span className={styles.groupCount}>{group.tasks.length}</span>
       </h2>
-      <TaskList tasks={group.tasks} onDelete={onDelete} />
+      <TaskList tasks={group.tasks} controls={controls} />
     </section>
   )
 }

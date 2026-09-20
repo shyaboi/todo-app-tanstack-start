@@ -26,14 +26,3 @@ const getServerSnapshot = (): Platform => 'other'
 export function usePlatform(): Platform {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
-
-/** Maps the design's Mac glyphs onto the running platform. */
-export function resolveKeys(keys: string, platform: Platform): string {
-  if (platform === 'mac') return keys
-  return keys
-    .replace(/⌘/g, 'Ctrl')
-    .replace(/⌥/g, 'Alt')
-    .replace(/⌃/g, 'Ctrl')
-    .replace(/⇧/g, 'Shift')
-    .replace(/⌫/g, 'Backspace')
-}

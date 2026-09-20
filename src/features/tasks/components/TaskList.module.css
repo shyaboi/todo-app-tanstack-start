@@ -122,3 +122,12 @@
   font: var(--text-mono);
   color: var(--meta);
 }
+
+/* The selected row. The keyboard's focus ring (global :focus-visible) marks it
+   while it has focus; this quieter fill keeps it identifiable after focus has
+   moved into one of its controls. Never colour alone: aria-current carries it
+   for assistive tech. */
+.selected {
+  background: var(--sunken);
+  border-color: var(--border-strong);
+}

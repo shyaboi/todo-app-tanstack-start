@@ -7,7 +7,6 @@ import { Button } from './Button'
 import { Field } from './Field'
 import { StatusPill, PriorityPill, STATUS_LABEL } from './Pill'
 import { Kbd } from './Kbd'
-import { resolveKeys } from '../hooks/usePlatform'
 
 describe('Button', () => {
   it('is a real button element, not a div wearing a role', () => {
@@ -94,23 +93,5 @@ describe('Kbd', () => {
   it('renders each key in a <kbd> element', () => {
     const { container } = render(<Kbd keys="G I" />)
     expect(container.querySelectorAll('kbd')).toHaveLength(2)
-  })
-})
-
-describe('resolveKeys', () => {
-  it('leaves Mac glyphs alone on a Mac', () => {
-    expect(resolveKeys('⌘K', 'mac')).toBe('⌘K')
-    expect(resolveKeys('⇧⌘Z', 'mac')).toBe('⇧⌘Z')
-  })
-
-  it('reads ⌘ as Ctrl elsewhere, per the design', () => {
-    expect(resolveKeys('⌘K', 'other')).toBe('CtrlK')
-    expect(resolveKeys('⌘⌫', 'other')).toBe('CtrlBackspace')
-    expect(resolveKeys('⇧⌘Z', 'other')).toBe('ShiftCtrlZ')
-  })
-
-  it('leaves keys with no modifier untouched on both', () => {
-    expect(resolveKeys('esc', 'mac')).toBe('esc')
-    expect(resolveKeys('esc', 'other')).toBe('esc')
   })
 })

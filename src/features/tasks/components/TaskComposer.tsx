@@ -1,15 +1,21 @@
-import { useId, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '~/shared/components/Button'
 import { Kbd } from '~/shared/components/Kbd'
 import { useCreateTask } from '../task.query'
 import { titleSchema } from '../task.schema'
 import styles from './TaskComposer.module.css'
 
+/**
+ * A fixed id, so the N shortcut can land focus here without the page holding
+ * a ref to a child. There is one composer on the page, which is what makes
+ * an id the honest choice; a ref would be the answer for a repeated control.
+ */
+export const COMPOSER_INPUT_ID = 'task-composer-input'
+
 export function TaskComposer() {
   const [title, setTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const labelId = useId()
 
   const create = useCreateTask()
 
@@ -48,15 +54,11 @@ export function TaskComposer() {
     <form className={styles.form} onSubmit={onSubmit} noValidate>
       <div className={styles.bar}>
         {/* A real label, visually hidden: the placeholder is not a label. */}
-        <label
-          className="visually-hidden"
-          htmlFor={labelId}
-          id={`${labelId}-label`}
-        >
+        <label className="visually-hidden" htmlFor={COMPOSER_INPUT_ID}>
           Task title
         </label>
         <input
-          id={labelId}
+          id={COMPOSER_INPUT_ID}
           ref={inputRef}
           className={styles.input}
           value={title}
@@ -66,7 +68,7 @@ export function TaskComposer() {
           }}
           placeholder="Add a task…"
           aria-invalid={error ? true : undefined}
-          aria-describedby={error ? `${labelId}-err` : undefined}
+          aria-describedby={error ? `${COMPOSER_INPUT_ID}-err` : undefined}
           autoComplete="off"
         />
         <Kbd keys="N" />
@@ -76,7 +78,11 @@ export function TaskComposer() {
       </div>
 
       {error && (
-        <p className={styles.error} id={`${labelId}-err`} role="alert">
+        <p
+          className={styles.error}
+          id={`${COMPOSER_INPUT_ID}-err`}
+          role="alert"
+        >
           <span className={styles.dot} aria-hidden="true" />
           {error}
         </p>

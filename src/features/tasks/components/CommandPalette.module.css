@@ -1,0 +1,183 @@
+.dialog {
+  /* Anchored high rather than centred: the eye is already at the top of the
+     page, and the list grows downward as you type. */
+  margin: 12vh auto 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  width: min(600px, calc(100% - var(--space-8)));
+}
+
+.dialog::backdrop {
+  background: rgb(27 26 22 / 32%);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-dialog);
+  overflow: hidden;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.icon {
+  color: var(--meta);
+  flex-shrink: 0;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  height: var(--control-height);
+  border: 0;
+  background: transparent;
+  font: var(--text-body);
+  color: var(--ink);
+}
+
+.input::placeholder {
+  color: var(--meta);
+}
+
+/* The dialog is the focus context; a ring inside it would be noise. */
+.input:focus {
+  outline: none;
+}
+
+.resultLabel {
+  font: var(--text-small);
+  color: var(--meta);
+  white-space: nowrap;
+}
+
+.scopes {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--hairline);
+  font: var(--text-small);
+  color: var(--meta);
+}
+
+.scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scopeActive {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.scopePrefix {
+  font: var(--text-mono);
+  color: var(--rust-700);
+}
+
+.scopeHint {
+  margin-inline-start: auto;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2);
+  max-height: min(56vh, 480px);
+  overflow-y: auto;
+}
+
+.group + .group {
+  margin-block-start: var(--space-2);
+}
+
+.groupLabel,
+.noMatch {
+  font: var(--text-micro);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--meta);
+  padding: var(--space-2) var(--space-3) var(--space-1);
+}
+
+.noMatch {
+  text-transform: none;
+  letter-spacing: 0;
+  font: var(--text-small);
+}
+
+.groupItems {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--control-height-sm);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-control);
+  cursor: default;
+}
+
+/* The highlight is not colour alone: aria-selected carries it, and the rust
+   bar on the left survives a monochrome display. */
+.optionActive {
+  background: var(--sunken);
+  box-shadow: inset 3px 0 0 var(--rust-600);
+}
+
+.optionDisabled {
+  opacity: 0.45;
+}
+
+.optionText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.optionLabel {
+  font: var(--text-row);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionHint {
+  font: var(--text-small);
+  /* --secondary, not --meta: the hint also sits on the highlighted row, whose
+     background is one step darker, and --meta only clears 4.5:1 on --surface. */
+  color: var(--secondary);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--hairline);
+  font: var(--text-small);
+  color: var(--meta);
+}
+
+.footer > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
