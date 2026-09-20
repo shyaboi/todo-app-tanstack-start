@@ -31,6 +31,34 @@ const GUEST_TTL_MS = 30 * 24 * 60 * 60 * 1000
 /** One message for every failure, so the form is not an account directory. */
 const CREDENTIALS_REJECTED = 'That email and password do not match an account.'
 
+/**
+ * The floor every rejected sign-in is held to, in milliseconds.
+ *
+ * One message is not enough on its own, because the two paths did different
+ * amounts of work. A wrong password on a REAL account costs a scrypt verify
+ * plus a write to bump the attempt counter; an unknown address costs a scrypt
+ * verify and no write. Measured in the audit: 315ms against a registered
+ * address, 213ms against an unregistered one, consistently, on every single
+ * attempt. `wastePasswordWork` equalised the hashing and the database round
+ * trip gave the answer away anyway.
+ *
+ * Padding to a fixed floor removes the difference by construction rather than
+ * by trying to match one code path's cost to another's. It is set above both
+ * measured times so neither path has to be slowed by much to reach it.
+ *
+ * Honest about the residual: a database slow enough to push the real path past
+ * the floor would leak again. The floor narrows the signal to the tail rather
+ * than removing it, and a constant-time guarantee is not available while one
+ * path talks to a network and the other does not.
+ */
+const REJECT_FLOOR_MS = 400
+
+/** Holds a rejection until the floor, so the two paths cannot be told apart. */
+async function padTo(started: number): Promise<void> {
+  const remaining = REJECT_FLOOR_MS - (Date.now() - started)
+  if (remaining > 0) await new Promise((r) => setTimeout(r, remaining))
+}
+
 async function run<T>(operation: string, fn: () => Promise<T>): Promise<T> {
   const started = Date.now()
   try {
@@ -50,10 +78,30 @@ async function run<T>(operation: string, fn: () => Promise<T>): Promise<T> {
 }
 
 /**
+ * Deletes every session row for a user, so no previously issued token works.
+ *
+ * Issuing a fresh token is only half of the defence against session fixation,
+ * and for a long time this code had only that half. The old token stayed in
+ * `sessions` with a valid expiry, so a guest token captured BEFORE sign-up
+ * still resolved to the same user id afterwards -- and that row is now a
+ * claimed account. Demonstrated in the audit: the pre-authentication cookie,
+ * replayed in a clean browser, read the finished account's tasks.
+ *
+ * Called on the privilege transition only. Signing in to an account that
+ * already exists deliberately leaves other sessions alone: those are the
+ * owner's other devices, and signing in on a laptop should not sign out a
+ * phone.
+ */
+async function revokeSessionsFor(userId: ObjectId): Promise<void> {
+  await (await sessions()).deleteMany({ userId })
+}
+
+/**
  * Issues a fresh session and sets the cookie.
  *
  * Always a new token, never a reused one: a token that existed before
  * authentication must not survive it, which is what session fixation exploits.
+ * Revoking the old rows is the other half -- see `revokeSessionsFor`.
  */
 async function startSession(userId: ObjectId): Promise<void> {
   const token = newSessionToken()
@@ -177,7 +225,10 @@ export function signUp(email: string, password: string): Promise<User> {
           { returnDocument: 'after' },
         )
         if (claimed) {
-          // A fresh token: the session predates authentication.
+          /* Every token issued to this row while it was a guest is destroyed
+             before a new one is issued. Order matters: revoking after
+             `startSession` would delete the token just written. */
+          await revokeSessionsFor(claimed._id)
           await startSession(claimed._id)
           return toUser(claimed)
         }
@@ -212,6 +263,7 @@ export function signUp(email: string, password: string): Promise<User> {
 
 export function signIn(email: string, password: string): Promise<User> {
   return run('signIn', async () => {
+    const started = Date.now()
     await ensureAuthIndexes()
     const col = await users()
     const doc = await col.findOne({ email })
@@ -221,14 +273,24 @@ export function signIn(email: string, password: string): Promise<User> {
          in about a millisecond and a known one in about a hundred, which makes
          the form a membership oracle. */
       await wastePasswordWork(password)
+      await padTo(started)
       throw new AppError('VALIDATION_FAILED', CREDENTIALS_REJECTED)
     }
 
     if (doc.lockedUntil && doc.lockedUntil > new Date()) {
-      throw new AppError(
-        'VALIDATION_FAILED',
-        'Too many attempts. Try again in a few minutes.',
-      )
+      /* The SAME message as every other failure, and the same delay.
+         "Too many attempts" is only ever true of an address that has an
+         account, so saying it turned the form back into the directory the
+         rest of this function works to avoid: six wrong guesses and the
+         wording told you whether anyone had registered.
+
+         The cost is real and accepted: someone who has genuinely locked
+         themselves out is not told why. The fix for that is a reset-by-email
+         flow, which needs a mail service this build does not have (PLAN.md
+         9.3) -- not a message that answers the question for everyone. */
+      await wastePasswordWork(password)
+      await padTo(started)
+      throw new AppError('VALIDATION_FAILED', CREDENTIALS_REJECTED)
     }
 
     if (!(await verifyPassword(password, doc.passwordHash))) {
@@ -246,6 +308,7 @@ export function signIn(email: string, password: string): Promise<User> {
           },
         },
       )
+      await padTo(started)
       throw new AppError('VALIDATION_FAILED', CREDENTIALS_REJECTED)
     }
 
@@ -289,6 +352,11 @@ async function adoptGuestTasks(from: ObjectId, to: ObjectId): Promise<void> {
   // The guest row has served its purpose. Guarded on email being null so this
   // can never delete a claimed account.
   await (await users()).deleteOne({ _id: from, email: null })
+  /* And its tokens with it. They were already inert -- `currentViewer` returns
+     null when the user row is gone -- but leaving rows behind that nothing
+     will ever delete before their TTL is how a collection grows without
+     anyone deciding that it should. */
+  await revokeSessionsFor(from)
 
   logger.info('adopted guest tasks on sign-in', {
     operation: 'signIn',

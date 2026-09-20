@@ -42,6 +42,54 @@ export default defineConfig({
        stays a plain Node server and `npm start` keeps working. */
     nitroV2Plugin({
       preset: process.env.VERCEL ? 'vercel' : 'node-server',
+      /* Response headers the app was shipping none of (PLAN.md 9.1). Set on
+         the server rather than in a host dashboard so they travel with the
+         code and are the same on every deployment.
+
+         `frame-ancestors 'none'` is the one that closes a real hole: the app
+         is cookie-authenticated and one click deletes a task. SameSite=Lax
+         already means a cross-site frame gets a fresh guest rather than the
+         victim's session, so this is the second lock, not the first.
+
+         The CSP allows 'unsafe-inline' for scripts, and it is worth being
+         plain about why rather than quietly shipping a CSP that looks
+         stronger than it is: the SSR payload is an inline <script> written by
+         the framework, and TanStack Start does not expose a nonce to put on
+         it. What the policy still buys is real -- no script may be LOADED
+         from another origin, no object or base tag, no form posting
+         elsewhere, and nothing framed. Stored XSS tested clean (six payloads,
+         every sink), so this is defence in depth rather than the thing
+         holding the line. A nonce, when the framework offers one, removes the
+         'unsafe-inline' and nothing else here changes. */
+      routeRules: {
+        '/**': {
+          headers: {
+            'content-security-policy': [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data:",
+              "font-src 'self'",
+              "connect-src 'self'",
+              "form-action 'self'",
+              "base-uri 'none'",
+              "object-src 'none'",
+              "frame-ancestors 'none'",
+            ].join('; '),
+            // Belt and braces for frame-ancestors, for anything that predates it.
+            'x-frame-options': 'DENY',
+            // A .js served as text/plain must not be executed as a script.
+            'x-content-type-options': 'nosniff',
+            // A task title can end up in a path; do not send it to other sites.
+            'referrer-policy': 'strict-origin-when-cross-origin',
+            'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+            // Two years, and only meaningful over https, which is where it is
+            // served. Local development is http and never sees this.
+            'strict-transport-security':
+              'max-age=63072000; includeSubDomains; preload',
+          },
+        },
+      },
       /* The Mongo driver is never bundled.
 
          It is CommonJS and reaches for `crypto` through a conditional

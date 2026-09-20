@@ -23,7 +23,19 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
       { title: 'Tasker' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [
+      { rel: 'stylesheet', href: appCss },
+      /* Browsers ask for /favicon.ico whether or not anything links to it, so
+         the file in public/ is what actually stops the 404. These are here so
+         the SVG is preferred where it is supported -- it stays sharp at any
+         size, and it is the same shape drawn from the same two tokens. */
+      { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' },
+      {
+        rel: 'alternate icon',
+        href: '/favicon.ico',
+        sizes: '16x16 32x32 48x48',
+      },
+    ],
   }),
   shellComponent: RootDocument,
   notFoundComponent: NotFound,
