@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { gotoHydrated, signIn } from './helpers'
+import { gotoHydrated, openFilters, signIn } from './helpers'
 
 /* AC5 and AC6, against Ada's seeded list: 5 to do, 3 in progress, 2 done.
    Every filter is a URL, so most assertions here are about the address bar as
@@ -35,6 +35,8 @@ test('a filtered URL is a link: it renders the same set on arrival', async ({
   await expect(
     page.getByRole('searchbox', { name: 'Search tasks' }),
   ).toHaveValue('focus')
+  // The chips live behind the top bar's disclosure since 8.4a.
+  await openFilters(page)
   await expect(page.getByRole('button', { name: /^To do/ })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -65,6 +67,7 @@ test('status chips narrow the list, and Back undoes the choice', async ({
   page,
 }) => {
   await gotoHydrated(page)
+  await openFilters(page)
 
   await page.getByRole('button', { name: /^Done 2/ }).click()
   await expect(page.getByRole('listitem')).toHaveCount(2)
@@ -103,6 +106,7 @@ test('Clear all restores the full list and empties the URL', async ({
 }) => {
   await gotoHydrated(page, '/?q=focus&status=todo')
   await expect(page.getByRole('listitem')).toHaveCount(1)
+  await openFilters(page)
 
   await page.getByRole('button', { name: 'Clear all' }).click()
   await expect(page.getByRole('listitem')).toHaveCount(10)
@@ -144,6 +148,7 @@ test('explains when the status filter is what is hiding a match', async ({
     page.getByText(/1 more task matches but is hidden/),
   ).toBeVisible()
 
+  await openFilters(page)
   await page.getByRole('button', { name: 'Show all statuses' }).click()
   await expect(page.getByText(DONE_TASK)).toBeVisible()
   await expect(page).not.toHaveURL(/status=/)

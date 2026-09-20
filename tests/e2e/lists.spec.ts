@@ -4,6 +4,7 @@ import {
   createTask,
   gotoHydrated,
   signIn,
+  openFilters,
   uniqueTitle,
   waitForHydrated,
   waitForServerAck,
@@ -181,6 +182,7 @@ test('the new list is offered everywhere a list is', async ({ page }) => {
   await expect(listLink(page, name)).toBeVisible()
 
   // The filter panel.
+  await openFilters(page)
   await expect(
     page.getByRole('group', { name: 'List' }).getByRole('button', { name }),
   ).toBeVisible()

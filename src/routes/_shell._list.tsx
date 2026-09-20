@@ -16,11 +16,9 @@ import {
 import type { PendingUndo } from '~/features/tasks/task.query'
 import type { Task, TaskStatus } from '~/features/tasks/task.types'
 import {
-  countByStatus,
   filterTasks,
   groupByDue,
   hasActiveFilters,
-  hiddenByStatus,
   sortTasks,
 } from '~/features/tasks/task.filters'
 import type { SortOrder } from '~/features/tasks/task.filters'
@@ -43,12 +41,8 @@ import {
   COMPOSER_INPUT_ID,
   TaskComposer,
 } from '~/features/tasks/components/TaskComposer'
-import {
-  SEARCH_INPUT_ID,
-  SearchInput,
-} from '~/features/tasks/components/SearchInput'
-import { SortSelect } from '~/features/tasks/components/SortSelect'
-import { TaskFilters } from '~/features/tasks/components/TaskFilters'
+import { SEARCH_INPUT_ID } from '~/features/tasks/components/SearchInput'
+import { TopBar } from '~/features/tasks/components/TopBar'
 import styles from './_shell._list.module.css'
 
 /* A pathless layout, not a page (PLAN.md 4.2). It owns the list and renders an
@@ -265,130 +259,122 @@ function ListLayout() {
 
   return (
     <div className={styles.split}>
-      <main className={styles.page}>
-        <header className={styles.header}>
-          {/* The view is the page's subject, so it is the h1. The brand lives in
-            the sidebar as a link, where a heading would only mislead a screen
-            reader about what this page is. */}
-          <h1 className={styles.title}>{viewTitle(search, lists)}</h1>
-          {/* Announced politely: a changed count is the answer to a filter change,
-            and a screen reader user otherwise gets nothing back for it. */}
-          <p className={styles.count} aria-live="polite">
-            {countCopy(visibleTasks.length, tasks.length, filtering)}
-          </p>
-        </header>
-
-        <TaskComposer />
-
-        <div className={styles.toolbar}>
-          <SearchInput
-            value={search.q ?? ''}
-            onChange={(q) =>
-              updateSearch({ q: q || undefined }, search.q !== undefined)
-            }
-          />
-          <SortSelect
-            value={sort}
-            // The default never needs to appear in the URL.
-            onChange={(next) =>
-              updateSearch({ sort: next === DEFAULT_SORT ? undefined : next })
-            }
-          />
-        </div>
-
-        {tasks.length > 0 && (
-          <TaskFilters
-            search={search}
-            counts={countByStatus(tasks)}
-            total={tasks.length}
-            hidden={hiddenByStatus(tasks, filters, now, lists)}
-            onChange={(patch) => updateSearch(patch)}
-          />
-        )}
-
-        {tasks.length === 0 ? (
-          // First run. Not an error: there is simply nothing here yet.
-          <div className={styles.empty}>
-            <p className={styles.emptyTitle}>Nothing here yet</p>
-            <p className={styles.emptyBody}>
-              Add your first task above, or press N to start typing.
-            </p>
-          </div>
-        ) : visibleTasks.length === 0 ? (
-          <NoMatches
-            filters={filters}
-            pending={create.isPending}
-            onCreate={(title) => create.mutate({ title })}
-          />
-        ) : groups ? (
-          <TaskGroups groups={groups} controls={controls} now={now} />
-        ) : (
-          <TaskList tasks={visibleTasks} controls={controls} />
-        )}
-
-        <BottomNav onActions={() => setPaletteOpen(true)} />
-
-        <ModeHint
-          mode={{
-            keys: '1 2 3',
-            text:
-              selected !== null
-                ? 'set the selected task’s status'
-                : 'filter the list by status',
-          }}
-          onOpenPalette={() => setPaletteOpen(true)}
-          onOpenHelp={() => setHelpOpen(true)}
+      <div className={styles.column}>
+        <TopBar
+          search={search}
+          sort={sort}
+          onChange={(patch) => updateSearch(patch)}
+          onSearch={(q) =>
+            updateSearch({ q: q || undefined }, search.q !== undefined)
+          }
+          // The default never needs to appear in the URL.
+          onSort={(next) =>
+            updateSearch({ sort: next === DEFAULT_SORT ? undefined : next })
+          }
         />
 
-        {helpOpen && (
-          <KeyboardMap
-            commands={commands}
-            hasSelection={selected !== null}
-            onClose={() => setHelpOpen(false)}
-          />
-        )}
+        <main className={styles.page}>
+          <header className={styles.header}>
+            {/* The view is the page's subject, so it is the h1. The brand lives in
+            the sidebar as a link, where a heading would only mislead a screen
+            reader about what this page is. */}
+            <h1 className={styles.title}>{viewTitle(search, lists)}</h1>
+            {/* Announced politely: a changed count is the answer to a filter change,
+            and a screen reader user otherwise gets nothing back for it. */}
+            <p className={styles.count} aria-live="polite">
+              {countCopy(visibleTasks.length, tasks.length, filtering)}
+            </p>
+          </header>
 
-        {paletteOpen && (
-          <CommandPalette
-            commands={commands}
-            tasks={tasks}
-            lists={lists}
-            canSetPriority={selected !== null}
-            /* Picking a task opens it: the panel is the natural home for a task
+          <TaskComposer />
+
+          {tasks.length === 0 ? (
+            // First run. Not an error: there is simply nothing here yet.
+            <div className={styles.empty}>
+              <p className={styles.emptyTitle}>Nothing here yet</p>
+              <p className={styles.emptyBody}>
+                Add your first task above, or press N to start typing.
+              </p>
+            </div>
+          ) : visibleTasks.length === 0 ? (
+            <NoMatches
+              filters={filters}
+              pending={create.isPending}
+              onCreate={(title) => create.mutate({ title })}
+            />
+          ) : groups ? (
+            <TaskGroups groups={groups} controls={controls} now={now} />
+          ) : (
+            <TaskList tasks={visibleTasks} controls={controls} />
+          )}
+
+          <BottomNav onActions={() => setPaletteOpen(true)} />
+
+          <ModeHint
+            mode={{
+              keys: '1 2 3',
+              text:
+                selected !== null
+                  ? 'set the selected task’s status'
+                  : 'filter the list by status',
+            }}
+            onOpenPalette={() => setPaletteOpen(true)}
+            onOpenHelp={() => setHelpOpen(true)}
+          />
+
+          {helpOpen && (
+            <KeyboardMap
+              commands={commands}
+              hasSelection={selected !== null}
+              onClose={() => setHelpOpen(false)}
+            />
+          )}
+
+          {paletteOpen && (
+            <CommandPalette
+              commands={commands}
+              tasks={tasks}
+              lists={lists}
+              canSetPriority={selected !== null}
+              /* Picking a task opens it: the panel is the natural home for a task
                you went looking for, and it works whether or not the current
                filters would have shown the row. */
-            onSelectTask={(id) =>
-              void navigate({
-                to: '/t/$todoId',
-                params: { todoId: id },
-                search: (prev) => prev,
-              })
-            }
-            onFilterList={(listId) => updateSearch({ list: listId })}
-            onSetPriority={(priority) => {
-              if (selected) {
-                updateSelected.mutate({ id: selected.id, patch: { priority } })
+              onSelectTask={(id) =>
+                void navigate({
+                  to: '/t/$todoId',
+                  params: { todoId: id },
+                  search: (prev) => prev,
+                })
               }
-            }}
-            onCreateTask={(title) => create.mutate({ title })}
-            onClose={() => setPaletteOpen(false)}
-          />
-        )}
+              onFilterList={(listId) => updateSearch({ list: listId })}
+              onSetPriority={(priority) => {
+                if (selected) {
+                  updateSelected.mutate({
+                    id: selected.id,
+                    patch: { priority },
+                  })
+                }
+              }}
+              onCreateTask={(title) => create.mutate({ title })}
+              onClose={() => setPaletteOpen(false)}
+            />
+          )}
 
-        {undo && (
-          <UndoToast
-            // A fresh toast per delete, so the countdown restarts without
-            // resetting state from inside an effect.
-            key={undo.undoToken}
-            message="Task deleted"
-            onExpire={dismissUndo}
-            onUndo={() => {
-              restore.mutate(undo)
-              setUndo(null)
-            }}
-          />
-        )}
-      </main>
+          {undo && (
+            <UndoToast
+              // A fresh toast per delete, so the countdown restarts without
+              // resetting state from inside an effect.
+              key={undo.undoToken}
+              message="Task deleted"
+              onExpire={dismissUndo}
+              onUndo={() => {
+                restore.mutate(undo)
+                setUndo(null)
+              }}
+            />
+          )}
+        </main>
+      </div>
 
       {/* The detail slot. Empty at /, the panel at /t/$id (6.2). */}
       <Outlet />

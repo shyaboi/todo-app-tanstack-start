@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
-import { createTask, gotoHydrated, signIn, uniqueTitle } from './helpers'
+import {
+  createTask,
+  gotoHydrated,
+  openFilters,
+  signIn,
+  uniqueTitle,
+} from './helpers'
 
 /* The phone layout, at the design's 360px floor with a touch screen
    (PLAN.md 7.3). Runs in the `mobile` Playwright project only. */
@@ -110,6 +116,7 @@ test('the status filters are a strip that scrolls on its own', async ({
 }) => {
   await signIn(page)
   await gotoHydrated(page)
+  await openFilters(page)
   const group = page.getByRole('group', { name: 'Status' })
   await expect(group).toBeVisible()
   const scrolls = await group.evaluate(

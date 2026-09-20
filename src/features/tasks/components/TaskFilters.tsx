@@ -35,14 +35,11 @@ export function TaskFilters({
   search,
   counts,
   total,
-  hidden,
   onChange,
 }: {
   search: TaskSearch
   counts: Record<TaskStatus, number>
   total: number
-  /** Tasks the query matches but the status filter is hiding. */
-  hidden: number
   onChange: (patch: Partial<TaskSearch>) => void
 }) {
   const platform = usePlatform()
@@ -152,21 +149,10 @@ export function TaskFilters({
       </fieldset>
 
       <div className={styles.footer}>
-        {/* The difference between an empty result and a misleading one: the
-            query matched, the status filter is what is hiding it. */}
-        {hidden > 0 && (
-          <p className={styles.hidden}>
-            {hidden} more {hidden === 1 ? 'task matches' : 'tasks match'} but{' '}
-            {hidden === 1 ? 'is' : 'are'} hidden by the status filter.{' '}
-            <button
-              type="button"
-              className={styles.inlineAction}
-              onClick={() => onChange({ status: undefined })}
-            >
-              Show all statuses
-            </button>
-          </p>
-        )}
+        {/* The "N more are hidden" line used to live here. It explains why a
+            list looks empty, so it cannot sit behind a disclosure you would
+            only open if you already suspected the filters -- it is in the top
+            bar now, always visible (HiddenByFilter, PLAN.md 8.4a). */}
         {hasActiveFilters(toFilters(search)) && (
           <Button
             variant="ghost"

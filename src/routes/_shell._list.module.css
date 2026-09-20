@@ -6,12 +6,22 @@
   min-height: 100%;
 }
 
-.page {
+/* The top bar spans this, the page scrolls under it. */
+.column {
   flex: 1;
   min-width: 0;
-  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Wider than it was: with search and filters lifted into the bar, the list
+   gets the width the design draws it at rather than sharing the column with
+   three rows of controls. */
+.page {
+  width: 100%;
+  max-width: 900px;
   margin: 0 auto;
-  padding: var(--space-8) var(--space-6) var(--space-16);
+  padding: var(--space-6) var(--space-6) var(--space-16);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);

@@ -1,6 +1,12 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { createTask, gotoHydrated, signIn, uniqueTitle } from './helpers'
+import {
+  createTask,
+  gotoHydrated,
+  openFilters,
+  signIn,
+  uniqueTitle,
+} from './helpers'
 
 /* The keyboard map, the mode strip, and the rule behind both: nothing is
    keyboard-only, and every control shows its key. */
@@ -67,6 +73,7 @@ test('the strip opens the palette too, not only ⌘K', async ({ page }) => {
 test('every filter control carries its key on hover', async ({ page }) => {
   await signIn(page)
   await gotoHydrated(page, '/?status=todo')
+  await openFilters(page)
 
   await expect(page.getByRole('button', { name: /^All/ })).toHaveAttribute(
     'title',
@@ -92,6 +99,7 @@ test('the Hide done chip and ⇧C do the same thing', async ({ page }) => {
   await signIn(page)
   await gotoHydrated(page)
 
+  await openFilters(page)
   const chip = page.getByRole('button', { name: 'Hide done' })
   await chip.click()
   await expect(page).toHaveURL(/status=todo(%2C|,)doing/)
