@@ -5,54 +5,51 @@ import { joinStatus, splitStatus } from './task.search-params'
 import type { TaskSearch } from './task.search-params'
 
 /**
- * What the commands need from the page. Everything is a plain function; the
- * page wires each one to the same mutation or navigation the visible control
- * already uses, so the palette, the shortcut and the button cannot diverge.
+ * What every page's registry needs: the ways out of it. Shared by the list
+ * and the board, so G I, G T, G B, V, ⌘K and ? mean the same thing everywhere.
  */
-export interface TaskCommandContext {
-  selected: Task | null
-  search: TaskSearch
-  updateSearch: (patch: Partial<TaskSearch>) => void
+export interface NavigationContext {
+  view: 'list' | 'board'
   /** Replace the whole search: "go to" means arrive somewhere, not tweak. */
   goTo: (search: TaskSearch) => void
-  setStatus: (task: Task, status: TaskStatus) => void
-  startEdit: (task: Task) => void
-  requestDelete: (task: Task) => void
-  duplicate: (task: Task) => void
-  moveSelection: (delta: 1 | -1) => void
-  /** The design's cascade: close a panel, then clear search, then drop selection. */
-  escape: () => void
-  focusComposer: () => void
-  focusSearch: () => void
+  goToBoard: () => void
+  /** V: the other view. */
+  toggleView: () => void
   openPalette: () => void
   openHelp: () => void
 }
 
 /**
- * Keys the design's map draws that this build does not bind yet. Listed in the
- * help overlay, greyed, rather than omitted: a key map that quietly drops the
- * board bindings reads as complete when it is not.
- *
- * ⌘Z / ⇧⌘Z and ⇧1…3 are absent even here -- those are cut, not pending
- * (PLAN.md D10, D12).
+ * What the commands need from the page. Everything is a plain function; the
+ * page wires each one to the same mutation or navigation the visible control
+ * already uses, so the palette, the shortcut and the button cannot diverge.
  */
-export const UNBUILT_BINDINGS = [
-  { keys: '←  →', label: 'Move between board columns (Sprint 6)' },
-  { keys: '⇧→', label: 'Move a card to the next status (Sprint 6)' },
-  { keys: 'G B', label: 'Go to the board (Sprint 6)' },
-  { keys: 'V', label: 'Switch between list and board (Sprint 6)' },
-  { keys: 'D', label: 'Edit the due date (Sprint 6)' },
-] as const
+export interface TaskCommandContext extends NavigationContext {
+  selected: Task | null
+  search: TaskSearch
+  updateSearch: (patch: Partial<TaskSearch>) => void
+  setStatus: (task: Task, status: TaskStatus) => void
+  startEdit: (task: Task) => void
+  requestDelete: (task: Task) => void
+  duplicate: (task: Task) => void
+  moveSelection: (delta: 1 | -1) => void
+  /** Open the detail panel; and open it with focus on the due date. */
+  openTask: (task: Task) => void
+  editDue: (task: Task) => void
+  /** The design's cascade: close a panel, then clear search, then drop selection. */
+  escape: () => void
+  focusComposer: () => void
+  focusSearch: () => void
+}
 
 /**
- * The registry, built from the page's current state. A plain function rather
- * than a hook: it just assembles objects, and being pure is what makes the
- * contextual number keys testable without rendering anything.
+ * The list's registry, built from the page's current state. A plain function
+ * rather than a hook: it just assembles objects, and being pure is what makes
+ * the contextual number keys testable without rendering anything.
  *
- * Bindings the design lists but that have no home yet are deliberately not
- * registered rather than registered as no-ops: ← → ⇧→ G B and V belong to the
- * board (Sprint 6), D to due-date editing (Sprint 6). ⌘Z, ⇧⌘Z and ⇧1…3 are
- * cut (PLAN.md D10, D12).
+ * Every key the design draws is bound somewhere now -- the arrows and ⇧→ on
+ * the board, the rest here -- except ⌘Z, ⇧⌘Z and ⇧1…3, which are cut
+ * (PLAN.md D10, D12), and are absent rather than registered as no-ops.
  */
 export function buildTaskCommands(ctx: TaskCommandContext): Command[] {
   const { selected } = ctx
@@ -112,16 +109,23 @@ export function buildTaskCommands(ctx: TaskCommandContext): Command[] {
       run: onSelected(ctx.startEdit),
     },
     {
-      // The design's ↵ opens the detail panel, which arrives with Sprint 6.
-      // Until then it is the same as E, and hidden so it is not listed twice.
       id: 'open-task',
       label: 'Open the selected task',
+      hint: 'Every field, in a panel beside the list',
       keys: '↵',
       group: 'Selected task',
       when: 'selection',
       enabled: has,
-      hidden: true,
-      run: onSelected(ctx.startEdit),
+      run: onSelected(ctx.openTask),
+    },
+    {
+      id: 'edit-due',
+      label: 'Edit the due date',
+      keys: 'D',
+      group: 'Selected task',
+      when: 'selection',
+      enabled: has,
+      run: onSelected(ctx.editDue),
     },
     {
       id: 'duplicate',
@@ -160,21 +164,6 @@ export function buildTaskCommands(ctx: TaskCommandContext): Command[] {
       group: 'Navigate',
       hidden: true,
       run: () => ctx.moveSelection(-1),
-    },
-    {
-      id: 'go-inbox',
-      label: 'Go to Inbox',
-      hint: 'Everything, unfiltered',
-      keys: 'G I',
-      group: 'Navigate',
-      run: () => ctx.goTo({}),
-    },
-    {
-      id: 'go-today',
-      label: 'Go to Today',
-      keys: 'G T',
-      group: 'Navigate',
-      run: () => ctx.goTo({ due: 'today' }),
     },
     {
       id: 'escape',
@@ -227,10 +216,53 @@ export function buildTaskCommands(ctx: TaskCommandContext): Command[] {
       run: () => ctx.goTo({ sort: ctx.search.sort }),
     },
 
-    // ── Help ─────────────────────────────────────────────────────────────
+    // ── Navigate / Help ──────────────────────────────────────────────────
+    ...navigationCommands(ctx),
+  ]
+}
+
+/**
+ * The ways out of a page, and the two overlays. One implementation, spread
+ * into both registries, so the sidebar link, the key and the palette row all
+ * agree on where "Board" is.
+ */
+export function navigationCommands(ctx: NavigationContext): Command[] {
+  const onBoard = ctx.view === 'board'
+  return [
+    {
+      id: 'go-inbox',
+      label: 'Go to Inbox',
+      hint: 'Everything, unfiltered',
+      keys: 'G I',
+      group: 'Navigate',
+      run: () => ctx.goTo({}),
+    },
+    {
+      id: 'go-today',
+      label: 'Go to Today',
+      keys: 'G T',
+      group: 'Navigate',
+      run: () => ctx.goTo({ due: 'today' }),
+    },
+    {
+      id: 'go-board',
+      label: 'Go to the board',
+      hint: onBoard ? 'You are on it' : 'The same tasks, by status',
+      keys: 'G B',
+      group: 'Navigate',
+      enabled: !onBoard,
+      run: ctx.goToBoard,
+    },
+    {
+      id: 'toggle-view',
+      label: onBoard ? 'Switch to the list' : 'Switch to the board',
+      keys: 'V',
+      group: 'Navigate',
+      run: ctx.toggleView,
+    },
     {
       // Hidden from the palette, since it IS the palette; the help overlay
-      // (5.3) lists it like any other key.
+      // lists it like any other key.
       id: 'open-palette',
       label: 'Open the command palette',
       keys: '⌘K',

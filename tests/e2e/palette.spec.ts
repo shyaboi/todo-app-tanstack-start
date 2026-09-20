@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { createTask, gotoHydrated, signIn, uniqueTitle } from './helpers'
+import {
+  createTask,
+  gotoHydrated,
+  signIn,
+  uniqueTitle,
+  waitForServerAck,
+} from './helpers'
 
 /* The command palette, driven only by keys. The runner is not a Mac, so ⌘K
    is Control+K. */
@@ -95,17 +101,21 @@ test('# scopes to lists and filters by the chosen one', async ({ page }) => {
   for (const row of await rows.all()) await expect(row).toContainText('Docs')
 })
 
-test('picking a task from the palette selects its row', async ({ page }) => {
+test('picking a task from the palette opens it', async ({ page }) => {
   await signIn(page)
   await gotoHydrated(page)
   const box = await open(page)
   await box.fill('vercel preview')
   await page.keyboard.press('Enter')
-  const row = page
-    .getByRole('listitem')
-    .filter({ hasText: 'Set up Vercel preview deploys' })
-  await expect(row).toBeFocused()
-  await expect(row).toHaveAttribute('aria-current', 'true')
+  await expect(page).toHaveURL(/\/t\/[0-9a-f]{24}/)
+  const panel = page.getByRole('complementary', { name: 'Task details' })
+  await expect(panel.getByLabel('Title')).toHaveValue(
+    'Set up Vercel preview deploys',
+  )
+  // The list is still there behind it, filters untouched.
+  await expect(
+    page.getByRole('listitem').filter({ hasText: 'Set up Vercel preview' }),
+  ).toBeVisible()
 })
 
 test('! sets priority on the selected task', async ({ page }) => {
@@ -129,11 +139,17 @@ test('nothing matched: Enter creates the task you typed', async ({ page }) => {
   const box = await open(page)
   await box.fill(title)
   await expect(page.getByText(`No match for “${title}”.`)).toBeVisible()
+  // Registered BEFORE the key: the acknowledgement can arrive before a wait
+  // set up afterwards would start listening, and then nothing ever resolves.
+  const saved = waitForServerAck(page, title)
   await page.keyboard.press('Enter')
 
   await expect(
     page.getByRole('listitem').filter({ hasText: title }),
   ).toBeVisible()
+  // Optimistic UI: the row is on screen before the server has the task, and
+  // reloading straight away would race the write.
+  await saved
   await page.reload()
   await expect(
     page.getByRole('listitem').filter({ hasText: title }),

@@ -1,13 +1,11 @@
-import { useState } from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { useEffect, useEffectEvent, useState } from 'react'
+import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '~/shared/components/Button'
 import { UndoToast } from '~/shared/components/UndoToast'
 import { useSelection } from '~/shared/hooks/useSelection'
 import { useShortcuts } from '~/shared/hooks/useShortcuts'
-import { AccountBar } from '~/features/auth/components/AccountBar'
-import { viewerQuery } from '~/features/auth/auth.query'
 import {
   tasksQuery,
   useCreateTask,
@@ -27,11 +25,13 @@ import {
 } from '~/features/tasks/task.filters'
 import type { SortOrder } from '~/features/tasks/task.filters'
 import { parseTaskSearch, toFilters } from '~/features/tasks/task.search-params'
+import { viewTitle } from '~/features/tasks/task.views'
 import type { TaskSearch } from '~/features/tasks/task.search-params'
+import { buildTaskCommands } from '~/features/tasks/task.commands'
 import {
-  UNBUILT_BINDINGS,
-  buildTaskCommands,
-} from '~/features/tasks/task.commands'
+  bootRedirectsToBoard,
+  rememberView,
+} from '~/features/tasks/task.lastView'
 import { KeyboardMap } from '~/shared/components/KeyboardMap'
 import { ModeHint } from '~/features/tasks/components/ModeHint'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
@@ -47,36 +47,30 @@ import {
 } from '~/features/tasks/components/SearchInput'
 import { SortSelect } from '~/features/tasks/components/SortSelect'
 import { TaskFilters } from '~/features/tasks/components/TaskFilters'
-import styles from './index.module.css'
+import styles from './_shell._list.module.css'
 
-export const Route = createFileRoute('/')({
+/* A pathless layout, not a page (PLAN.md 4.2). It owns the list and renders an
+   <Outlet/> beside it, so /t/$id opens the detail panel WITHOUT unmounting the
+   list -- scroll position, selection and the search box all survive. The two
+   anti-patterns this avoids: a detail modal driven by local state, which is
+   not deep-linkable, and sibling routes, which remount and refetch the list on
+   every open. */
+export const Route = createFileRoute('/_shell/_list')({
   /* The URL owns the filter state (PLAN.md 4.1, Failure Check 7). Validation
      falls back per field and never throws, so a bad link shows the unfiltered
-     list rather than an error page. */
+     list rather than an error page. Declared here, on the layout, so the
+     detail route underneath inherits the same filters and the list behind the
+     panel stays exactly as it was. */
   validateSearch: parseTaskSearch,
-
-  /* The router decides WHEN the data is needed; TanStack Query owns its
-     lifecycle and cache. `ensureQueryData` populates the cache during SSR, and
-     the component below reads from that same cache -- one source of truth,
-     not a loader copy and a query copy (Failure Check 1).
-
-     The list is loaded UNFILTERED regardless of the URL. Filtering is derived
-     at render (D4): keying the query by filters would refetch on every
-     keystroke and recreate the two-sources-of-truth problem. */
-  loader: ({ context }) =>
-    Promise.all([
-      context.queryClient.ensureQueryData(tasksQuery),
-      context.queryClient.ensureQueryData(viewerQuery),
-    ]),
-  component: TasksPage,
+  component: ListLayout,
 })
 
 /** The design's list view sorts by due date and groups by it. */
 const DEFAULT_SORT: SortOrder = 'due'
 
-function TasksPage() {
-  // Already resolved by the loader, so this paints on the server with data.
-  // No useEffect, no fetch waterfall.
+function ListLayout() {
+  // Already resolved by the shell's loader, so this paints on the server with
+  // data. No useEffect, no fetch waterfall.
   const { data: tasks = [] } = useQuery(tasksQuery)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -138,6 +132,19 @@ function TasksPage() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+
+  /* D5: the list is the view to come back to -- unless this is the bare visit
+     that is about to bounce to the board, in which case the board will say so
+     itself. An effect event, so the search is read without becoming a
+     dependency that would re-run this on every filter change. */
+  const remember = useEffectEvent(() => {
+    if (!bootRedirectsToBoard(Object.keys(search).length > 0)) {
+      rememberView('list')
+    }
+  })
+  useEffect(() => {
+    remember()
+  }, [])
   const [undo, setUndo] = useState<PendingUndo | null>(null)
 
   const restore = useRestoreTask()
@@ -184,6 +191,22 @@ function TasksPage() {
         status: 'todo',
       }),
     moveSelection: selection.move,
+    /* Opening a task is a navigation, so it is deep-linkable and Back closes
+       it. The list layout stays mounted underneath (PLAN.md 4.2). The focus
+       hint rides in history state: it is intent, not address. */
+    openTask: (task) =>
+      void navigate({
+        to: '/t/$todoId',
+        params: { todoId: task.id },
+        search: (prev) => prev,
+      }),
+    editDue: (task) =>
+      void navigate({
+        to: '/t/$todoId',
+        params: { todoId: task.id },
+        search: (prev) => prev,
+        state: { focus: 'dueAt' },
+      }),
     escape: () => {
       // Dialogs and text fields handle their own Escape before this runs
       // (design rule: close a panel, then clear search, then drop selection).
@@ -214,6 +237,9 @@ function TasksPage() {
     },
     openPalette: () => setPaletteOpen(true),
     openHelp: () => setHelpOpen(true),
+    view: 'list',
+    goToBoard: () => void navigate({ to: '/board' }),
+    toggleView: () => void navigate({ to: '/board' }),
   })
   useShortcuts(commands, selected !== null)
 
@@ -226,123 +252,141 @@ function TasksPage() {
     onConfirmingChange: (id, confirming) =>
       setConfirmingId(confirming ? id : null),
     onDelete,
+    onOpen: (task) =>
+      void navigate({
+        to: '/t/$todoId',
+        params: { todoId: task.id },
+        search: (prev) => prev,
+      }),
   }
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Tasker</h1>
-        {/* Announced politely: a changed count is the answer to a filter change,
+    <div className={styles.split}>
+      <main className={styles.page}>
+        <header className={styles.header}>
+          {/* The view is the page's subject, so it is the h1. The brand lives in
+            the sidebar as a link, where a heading would only mislead a screen
+            reader about what this page is. */}
+          <h1 className={styles.title}>{viewTitle(search)}</h1>
+          {/* Announced politely: a changed count is the answer to a filter change,
             and a screen reader user otherwise gets nothing back for it. */}
-        <p className={styles.count} aria-live="polite">
-          {countCopy(visibleTasks.length, tasks.length, filtering)}
-        </p>
-      </header>
-
-      <AccountBar />
-
-      <TaskComposer />
-
-      <div className={styles.toolbar}>
-        <SearchInput
-          value={search.q ?? ''}
-          onChange={(q) =>
-            updateSearch({ q: q || undefined }, search.q !== undefined)
-          }
-        />
-        <SortSelect
-          value={sort}
-          // The default never needs to appear in the URL.
-          onChange={(next) =>
-            updateSearch({ sort: next === DEFAULT_SORT ? undefined : next })
-          }
-        />
-      </div>
-
-      {tasks.length > 0 && (
-        <TaskFilters
-          search={search}
-          counts={countByStatus(tasks)}
-          total={tasks.length}
-          hidden={hiddenByStatus(tasks, filters, now)}
-          onChange={(patch) => updateSearch(patch)}
-        />
-      )}
-
-      {tasks.length === 0 ? (
-        // First run. Not an error: there is simply nothing here yet.
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>Nothing here yet</p>
-          <p className={styles.emptyBody}>
-            Add your first task above. Search, filters and the command palette
-            arrive in Sprints 4 and 5.
+          <p className={styles.count} aria-live="polite">
+            {countCopy(visibleTasks.length, tasks.length, filtering)}
           </p>
-        </div>
-      ) : visibleTasks.length === 0 ? (
-        <NoMatches
-          filters={filters}
-          pending={create.isPending}
-          onCreate={(title) => create.mutate({ title })}
-        />
-      ) : groups ? (
-        <TaskGroups groups={groups} controls={controls} now={now} />
-      ) : (
-        <TaskList tasks={visibleTasks} controls={controls} />
-      )}
+        </header>
 
-      <ModeHint
-        hasSelection={selected !== null}
-        onOpenPalette={() => setPaletteOpen(true)}
-        onOpenHelp={() => setHelpOpen(true)}
-      />
+        <TaskComposer />
 
-      {helpOpen && (
-        <KeyboardMap
-          commands={commands}
-          hasSelection={selected !== null}
-          unbuilt={UNBUILT_BINDINGS}
-          onClose={() => setHelpOpen(false)}
-        />
-      )}
-
-      {paletteOpen && (
-        <CommandPalette
-          commands={commands}
-          tasks={tasks}
-          canSetPriority={selected !== null}
-          onSelectTask={(id) => {
-            /* A task hidden by the current filters is still findable here, so
-               picking it clears them; the row then exists to be selected. Once
-               the detail route lands (Sprint 6) this becomes a navigation. */
-            if (!ordered.some((t) => t.id === id)) goTo({ sort: search.sort })
-            selection.select(id)
-            selection.focusRow(id)
-          }}
-          onFilterList={(listId) => updateSearch({ list: listId })}
-          onSetPriority={(priority) => {
-            if (selected) {
-              updateSelected.mutate({ id: selected.id, patch: { priority } })
+        <div className={styles.toolbar}>
+          <SearchInput
+            value={search.q ?? ''}
+            onChange={(q) =>
+              updateSearch({ q: q || undefined }, search.q !== undefined)
             }
-          }}
-          onCreateTask={(title) => create.mutate({ title })}
-          onClose={() => setPaletteOpen(false)}
-        />
-      )}
+          />
+          <SortSelect
+            value={sort}
+            // The default never needs to appear in the URL.
+            onChange={(next) =>
+              updateSearch({ sort: next === DEFAULT_SORT ? undefined : next })
+            }
+          />
+        </div>
 
-      {undo && (
-        <UndoToast
-          // A fresh toast per delete, so the countdown restarts without
-          // resetting state from inside an effect.
-          key={undo.undoToken}
-          message="Task deleted"
-          onExpire={dismissUndo}
-          onUndo={() => {
-            restore.mutate(undo)
-            setUndo(null)
+        {tasks.length > 0 && (
+          <TaskFilters
+            search={search}
+            counts={countByStatus(tasks)}
+            total={tasks.length}
+            hidden={hiddenByStatus(tasks, filters, now)}
+            onChange={(patch) => updateSearch(patch)}
+          />
+        )}
+
+        {tasks.length === 0 ? (
+          // First run. Not an error: there is simply nothing here yet.
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>Nothing here yet</p>
+            <p className={styles.emptyBody}>
+              Add your first task above, or press N to start typing.
+            </p>
+          </div>
+        ) : visibleTasks.length === 0 ? (
+          <NoMatches
+            filters={filters}
+            pending={create.isPending}
+            onCreate={(title) => create.mutate({ title })}
+          />
+        ) : groups ? (
+          <TaskGroups groups={groups} controls={controls} now={now} />
+        ) : (
+          <TaskList tasks={visibleTasks} controls={controls} />
+        )}
+
+        <ModeHint
+          mode={{
+            keys: '1 2 3',
+            text:
+              selected !== null
+                ? 'set the selected task’s status'
+                : 'filter the list by status',
           }}
+          onOpenPalette={() => setPaletteOpen(true)}
+          onOpenHelp={() => setHelpOpen(true)}
         />
-      )}
-    </main>
+
+        {helpOpen && (
+          <KeyboardMap
+            commands={commands}
+            hasSelection={selected !== null}
+            onClose={() => setHelpOpen(false)}
+          />
+        )}
+
+        {paletteOpen && (
+          <CommandPalette
+            commands={commands}
+            tasks={tasks}
+            canSetPriority={selected !== null}
+            /* Picking a task opens it: the panel is the natural home for a task
+               you went looking for, and it works whether or not the current
+               filters would have shown the row. */
+            onSelectTask={(id) =>
+              void navigate({
+                to: '/t/$todoId',
+                params: { todoId: id },
+                search: (prev) => prev,
+              })
+            }
+            onFilterList={(listId) => updateSearch({ list: listId })}
+            onSetPriority={(priority) => {
+              if (selected) {
+                updateSelected.mutate({ id: selected.id, patch: { priority } })
+              }
+            }}
+            onCreateTask={(title) => create.mutate({ title })}
+            onClose={() => setPaletteOpen(false)}
+          />
+        )}
+
+        {undo && (
+          <UndoToast
+            // A fresh toast per delete, so the countdown restarts without
+            // resetting state from inside an effect.
+            key={undo.undoToken}
+            message="Task deleted"
+            onExpire={dismissUndo}
+            onUndo={() => {
+              restore.mutate(undo)
+              setUndo(null)
+            }}
+          />
+        )}
+      </main>
+
+      {/* The detail slot. Empty at /, the panel at /t/$id (6.2). */}
+      <Outlet />
+    </div>
   )
 }
 

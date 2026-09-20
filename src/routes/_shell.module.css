@@ -1,0 +1,20 @@
+.shell {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Below tablet width the sidebar becomes a strip across the top. The bottom
+   navigation the design draws for phones is Sprint 7.3; this keeps every view
+   reachable in the meantime without a horizontal scroll. */
+@media (max-width: 800px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

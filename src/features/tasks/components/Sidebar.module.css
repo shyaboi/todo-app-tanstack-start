@@ -1,0 +1,124 @@
+.nav {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 100dvh;
+  padding: var(--space-6) var(--space-4);
+  background: var(--sunken);
+  border-right: 1px solid var(--hairline);
+  overflow-y: auto;
+}
+
+.brand {
+  font: var(--text-display);
+  font-size: 26px;
+  line-height: 32px;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 0 var(--space-2);
+  margin-block-end: var(--space-5);
+}
+
+/* --secondary rather than --meta throughout the sidebar: the nav sits on
+   --sunken, and --meta only clears 4.5:1 on --surface. */
+.heading {
+  font: var(--text-micro);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--secondary);
+  padding: var(--space-3) var(--space-2) var(--space-1);
+}
+
+.link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-control);
+  color: var(--secondary);
+  text-decoration: none;
+  font: var(--text-row);
+}
+
+.link:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* Active is never colour alone: aria-current carries it, the weight changes,
+   and the rust bar survives a monochrome display. */
+.active {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--rust-600);
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Keys show on hover or focus only: at rest the sidebar is a list of places,
+   not a key map. */
+.keys {
+  display: none;
+}
+
+.link:hover .keys,
+.link:focus-visible .keys {
+  display: inline-flex;
+}
+
+.count {
+  font: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--secondary);
+  min-width: 1.5em;
+  text-align: right;
+}
+
+.active .count {
+  color: var(--ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .link {
+    transition: background-color 120ms ease;
+  }
+}
+
+/* Strip layout below tablet width: brand, then the links in a wrapping row. */
+@media (max-width: 800px) {
+  .nav {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-right: 0;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .brand {
+    margin: 0 var(--space-3) 0 0;
+    font-size: 22px;
+  }
+
+  .heading {
+    display: none;
+  }
+
+  .link {
+    min-height: var(--control-height-sm);
+  }
+}

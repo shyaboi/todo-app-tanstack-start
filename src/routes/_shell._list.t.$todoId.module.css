@@ -1,0 +1,29 @@
+.missing {
+  flex: 0 0 380px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: var(--space-8) var(--space-6) var(--space-8) 0;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+}
+
+.missingTitle {
+  font: var(--text-title2);
+  color: var(--ink);
+}
+
+.missingBody {
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+@media (max-width: 960px) {
+  .missing {
+    flex: 1 1 auto;
+    margin: 0 var(--space-6) var(--space-8);
+  }
+}

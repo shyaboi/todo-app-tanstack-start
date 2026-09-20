@@ -1,0 +1,89 @@
+/* Beside the list on wide screens, sticky so it stays in view as the list
+   scrolls behind it. Below tablet width it stacks under the list; the sheet
+   the design draws for phones is Sprint 7.3. */
+.panel {
+  position: sticky;
+  top: var(--space-6);
+  flex: 0 0 380px;
+  max-height: calc(100dvh - var(--space-12));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: var(--space-8) var(--space-6) var(--space-8) 0;
+  padding: var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel, 0 8px 24px rgb(27 26 22 / 8%));
+}
+
+/* The panel is a focus target on open. The ring on a whole panel reads as
+   noise, so it is restyled to the border -- never removed. */
+.panel:focus-visible {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    'ref close'
+    'heading close';
+  align-items: center;
+  column-gap: var(--space-3);
+}
+
+.ref {
+  grid-area: ref;
+  font: var(--text-mono);
+  color: var(--meta);
+}
+
+.heading {
+  grid-area: heading;
+  font: var(--text-title2);
+  color: var(--ink);
+}
+
+.close {
+  grid-area: close;
+}
+
+.note {
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-top: 1px solid var(--hairline);
+  min-height: 32px;
+}
+
+.saved {
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+.hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+@media (max-width: 960px) {
+  .panel {
+    position: static;
+    flex: 1 1 auto;
+    max-height: none;
+    margin: 0 var(--space-6) var(--space-8);
+  }
+}
