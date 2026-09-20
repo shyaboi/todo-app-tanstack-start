@@ -4,6 +4,7 @@ import { axe } from 'vitest-axe'
 import { CommandPalette } from './CommandPalette'
 import type { Command } from '~/shared/lib/commands'
 import type { Task } from '../task.types'
+import type { List } from '~/features/lists/list.types'
 
 /* The combobox contract, asserted directly: focus stays in the input, the
    highlight travels through aria-activedescendant, Enter runs the highlighted
@@ -54,11 +55,24 @@ const tasks = [
   task('a', 'Wire optimistic updates'),
   task('b', 'Draft the README'),
 ]
+const lists: List[] = [
+  {
+    id: '64b0c0ffee0ddba11ad00002',
+    name: 'Docs',
+    createdAt: '2026-09-01T00:00:00.000Z',
+  },
+  {
+    id: '64b0c0ffee0ddba11ad00003',
+    name: 'Infra',
+    createdAt: '2026-09-01T00:00:00.000Z',
+  },
+]
 
 function setup(over: Partial<Parameters<typeof CommandPalette>[0]> = {}) {
   const props = {
     commands,
     tasks,
+    lists,
     canSetPriority: false,
     onSelectTask: vi.fn(),
     onFilterList: vi.fn(),
@@ -188,7 +202,7 @@ describe('CommandPalette', () => {
     fireEvent.change(input, { target: { value: '# doc' } })
     expect(screen.getByRole('group', { name: 'Lists' })).toBeInTheDocument()
     fireEvent.keyDown(input, { key: 'Enter' })
-    expect(onFilterList).toHaveBeenCalledWith('docs')
+    expect(onFilterList).toHaveBeenCalledWith(lists[0]!.id)
   })
 
   it('! offers the three priorities, inert without a selected task', () => {

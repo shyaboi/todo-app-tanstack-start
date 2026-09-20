@@ -5,8 +5,10 @@ import { ConfirmDialog } from '~/shared/components/ConfirmDialog'
 import { usePlatform } from '~/shared/hooks/usePlatform'
 import { useSwipe } from '~/shared/hooks/useSwipe'
 import { displayKeys } from '~/shared/lib/keys'
+import { useQuery } from '@tanstack/react-query'
+import { listsQuery } from '~/features/lists/list.query'
+import { listName } from '~/features/lists/list.types'
 import { isTempId, useUpdateTask } from '../task.query'
-import { listName } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
 import type { TaskGroup } from '../task.filters'
 import { AdvanceStatusButton, DoneCheckbox } from './StatusControl'
@@ -55,6 +57,8 @@ export function TaskList({
 function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
   const update = useUpdateTask(task.id)
   const platform = usePlatform()
+  // From the cache the shell already loaded: no fetch, no prop drilling.
+  const { data: lists = [] } = useQuery(listsQuery)
   /* Swipe-to-done (PLAN.md 7.3): either direction toggles done, the same
      change the checkbox makes. Feedback is the row sliding with the finger;
      the swipe never counts until the finger lifts. */
@@ -116,7 +120,9 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
 
       <span className={styles.meta}>
         {task.listId && (
-          <span className={styles.listName}>{listName(task.listId)}</span>
+          <span className={styles.listName}>
+            {listName(lists, task.listId)}
+          </span>
         )}
 
         {task.dueAt && (

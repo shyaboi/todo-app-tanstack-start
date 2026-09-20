@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
-import { createTask, gotoHydrated, signIn, uniqueTitle } from './helpers'
+import {
+  createTask,
+  gotoHydrated,
+  signIn,
+  uniqueListName,
+  uniqueTitle,
+  waitForServerAck,
+} from './helpers'
 
 /* The detail panel: a route beside the list, not a modal over it. */
 
@@ -55,9 +62,13 @@ test('a field saves on blur, shows the outcome, and survives a reload', async ({
   await notes.blur()
   await expect(panel(page).getByText(/^Saved/)).toBeVisible()
 
+  const prioritySaved = waitForServerAck(page, title)
   await panel(page).getByLabel('Priority').selectOption('p1')
   await expect(row.getByText('P1', { exact: true })).toBeVisible()
 
+  // Every field here saves optimistically; reloading before the server has
+  // it races the write.
+  await prioritySaved
   await page.reload()
   await expect(panel(page).getByLabel('Notes')).toHaveValue(
     'Written from the panel',
@@ -87,18 +98,29 @@ test('the due date is settable at last, and the row shows it', async ({
 test('a list can be assigned, and the sidebar count follows', async ({
   page,
 }) => {
+  /* A guest, with a list of its own. Signing in as Ada and adding tasks would
+     change the seeded fixtures the grouping and filter specs count. */
+  const list = uniqueListName()
   const title = uniqueTitle('list me')
   await gotoHydrated(page)
-  const row = await createTask(page, title)
-  const docs = page
-    .getByRole('navigation', { name: 'Views' })
-    .getByRole('link', { name: /^Docs/ })
-  await expect(docs).toHaveText(/Docs.*0$/)
 
+  /* The composer makes the list, on a task of its own. Typed rather than
+     passed to createTask: the helper looks for a row containing what it was
+     given, and the #token never reaches the title. */
+  await page
+    .getByLabel('Task title')
+    .fill(`${uniqueTitle('holds it')} #${list}`)
+  await page.keyboard.press('Enter')
+  const link = page
+    .getByRole('navigation', { name: 'Views' })
+    .getByRole('link', { name: new RegExp(`^${list}`) })
+  await expect(link).toHaveText(new RegExp(`${list}.*1$`))
+
+  const row = await createTask(page, title)
   await row.getByRole('button', { name: `Open "${title}"` }).click()
-  await panel(page).getByLabel('List').selectOption('docs')
-  await expect(row).toContainText('Docs')
-  await expect(docs).toHaveText(/Docs.*1$/)
+  await panel(page).getByLabel('List').selectOption({ label: list })
+  await expect(row).toContainText(list)
+  await expect(link).toHaveText(new RegExp(`${list}.*2$`))
 })
 
 test('Escape in a dirty field reverts it; a second Escape closes', async ({

@@ -9,6 +9,12 @@ import type { Task } from '../task.types'
    this is the accessibility floor, so CI fails on a new violation in any of
    them. */
 
+vi.mock('~/features/lists/list.server', () => ({
+  listLists: () => Promise.resolve([]),
+  createList: vi.fn(),
+  renameList: vi.fn(),
+  deleteList: vi.fn(),
+}))
 vi.mock('../task.server', () => ({
   updateTodo: vi.fn(),
   createTodo: vi.fn(),

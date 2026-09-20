@@ -24,6 +24,27 @@ export interface AppErrorPayload {
   fieldErrors?: Record<string, string>
 }
 
+/* How the code and the error id survive the trip to the browser.
+
+   Only `message` crosses: a thrown error is serialised by seroval, which
+   keeps an Error's message and discards its class and its own properties
+   (verified -- `code` and `errorId` both arrived undefined). Without them the
+   client cannot tell a message the server wrote on purpose from one that
+   leaked, so it has to fall back to "Something failed" and every designed
+   error message in this file is wasted (system design 12).
+
+   So the boundary appends a machine tag that `describeError` reads and
+   strips. Ugly, and deliberately so: TanStack Start does have a serialization
+   adapter mechanism for exactly this, but in this version it is an internal
+   framework option rather than a user-facing one. When it is exposed, this
+   goes and an adapter for AppError takes its place. */
+export const WIRE_TAG = /\s*\[([A-Z_]+)#([a-z0-9]{4,16})\]$/
+
+/** The message as it crosses the wire: human text, then the machine tag. */
+export function toWireMessage(error: AppError): string {
+  return `${error.message} [${error.code}#${error.errorId}]`
+}
+
 export class AppError extends Error {
   readonly code: ErrorCode
   readonly errorId: string

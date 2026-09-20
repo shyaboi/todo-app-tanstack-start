@@ -12,6 +12,7 @@ import { STATUS_LABEL, TASK_STATUSES } from '~/features/tasks/task.types'
 import type { Task, TaskStatus } from '~/features/tasks/task.types'
 import { buildBoardCommands } from '~/features/tasks/board.commands'
 import { rememberView } from '~/features/tasks/task.lastView'
+import { listsQuery } from '~/features/lists/list.query'
 import { Board, toColumns } from '~/features/tasks/components/Board'
 import type { BoardControls } from '~/features/tasks/components/Board'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
@@ -29,6 +30,7 @@ export const Route = createFileRoute('/_shell/board')({
 
 function BoardPage() {
   const { data: tasks = [] } = useQuery(tasksQuery)
+  const { data: lists = [] } = useQuery(listsQuery)
   const navigate = useNavigate()
   const columns = toColumns(tasks)
 
@@ -255,6 +257,7 @@ function BoardPage() {
         <CommandPalette
           commands={commands}
           tasks={tasks}
+          lists={lists}
           canSetPriority={selected !== null}
           onSelectTask={(id) =>
             void navigate({ to: '/t/$todoId', params: { todoId: id } })

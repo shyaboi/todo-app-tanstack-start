@@ -1,7 +1,8 @@
 import '@tanstack/react-start/server-only'
 import { ObjectId } from 'mongodb'
-import { AppError, toSafeError } from '~/server/errors'
-import { logger } from '~/server/logger'
+import { AppError } from '~/server/errors'
+import { run } from '~/server/operation'
+import { assertListOwned } from '~/features/lists/list.service'
 import { randomUUID } from 'node:crypto'
 import { ObjectId as ObjectIdCtor } from 'mongodb'
 import { tasks, trash, toTask, ensureIndexes } from './task.repo'
@@ -27,30 +28,6 @@ import type { listTasksInput, taskPatch } from './task.schema'
 
 type ListFilters = z.output<typeof listTasksInput>
 type Patch = z.output<typeof taskPatch>
-
-/** Wraps an operation so no driver error can escape unsanitised, and so every
-    failure leaves one log line with the same shape. */
-async function run<T>(
-  operation: string,
-  entityId: string | undefined,
-  fn: () => Promise<T>,
-): Promise<T> {
-  const started = Date.now()
-  try {
-    const result = await fn()
-    return result
-  } catch (error) {
-    const safe = toSafeError(error)
-    logger.error('operation failed', {
-      operation,
-      entityId,
-      errorId: safe.errorId,
-      errorClass: error instanceof Error ? error.name : typeof error,
-      durationMs: Date.now() - started,
-    })
-    throw safe
-  }
-}
 
 /* A user's search text is escaped before it becomes a regex, and is only ever
    used as a VALUE. No part of a filter document is built from user input, so
@@ -115,6 +92,9 @@ export function createTask(
   input: CreateTaskParsed,
 ): Promise<Task> {
   return run('createTask', undefined, async () => {
+    // A list is a reference to something owned. Someone else's list id is
+    // refused before anything is written, as NOT_FOUND (PLAN.md 4.8).
+    if (input.listId) await assertListOwned(ownerId, input.listId)
     const col = await tasks()
     // Timestamps and id are generated here. The client supplies neither, and
     // the schema rejects the attempt (system design 5).
@@ -127,7 +107,7 @@ export function createTask(
       status: input.status,
       dueAt: input.dueAt ? new Date(input.dueAt) : null,
       priority: input.priority,
-      listId: input.listId,
+      listId: input.listId ? new ObjectIdCtor(input.listId) : null,
       createdAt: now,
       updatedAt: now,
     }
@@ -142,6 +122,7 @@ export function updateTask(
   patch: Patch,
 ): Promise<Task> {
   return run('updateTask', id, async () => {
+    if (patch.listId) await assertListOwned(ownerId, patch.listId)
     const col = await tasks()
 
     // Built field by field from the parsed patch -- never spread from a
@@ -151,7 +132,8 @@ export function updateTask(
     if (patch.notes !== undefined) $set.notes = patch.notes
     if (patch.status !== undefined) $set.status = patch.status
     if (patch.priority !== undefined) $set.priority = patch.priority
-    if (patch.listId !== undefined) $set.listId = patch.listId
+    if (patch.listId !== undefined)
+      $set.listId = patch.listId ? new ObjectIdCtor(patch.listId) : null
     if (patch.dueAt !== undefined)
       $set.dueAt = patch.dueAt ? new Date(patch.dueAt) : null
 

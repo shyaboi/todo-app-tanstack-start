@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { PriorityPill } from '~/shared/components/Pill'
-import { STATUS_LABEL, TASK_STATUSES, listName } from '../task.types'
+import { useQuery } from '@tanstack/react-query'
+import { listsQuery } from '~/features/lists/list.query'
+import { listName } from '~/features/lists/list.types'
+import { STATUS_LABEL, TASK_STATUSES } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
 import { isTempId } from '../task.query'
 import styles from './Board.module.css'
@@ -133,6 +136,7 @@ function BoardCard({
   task: Task
   controls: BoardControls
 }) {
+  const { data: lists = [] } = useQuery(listsQuery)
   const selected = controls.selectedId === task.id
   const lifted = controls.liftedId === task.id
   const dragging = controls.draggingId === task.id
@@ -183,7 +187,9 @@ function BoardCard({
 
       <div className={styles.meta}>
         {task.listId && (
-          <span className={styles.listName}>{listName(task.listId)}</span>
+          <span className={styles.listName}>
+            {listName(lists, task.listId)}
+          </span>
         )}
         {task.dueAt && (
           <time className={styles.due} dateTime={task.dueAt}>

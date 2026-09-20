@@ -97,7 +97,7 @@ test('Actions opens the palette as a sheet, usable entirely by touch', async ({
     .getByRole('option', { name: /^Docs/ })
     .tap()
   await expect(dialog).toBeHidden()
-  await expect(page).toHaveURL(/list=docs/)
+  await expect(page).toHaveURL(/list=[0-9a-f]{24}/)
 
   // And there is a way out that is not a key.
   await nav(page).getByRole('button', { name: 'Actions' }).tap()

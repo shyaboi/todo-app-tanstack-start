@@ -3,6 +3,7 @@ import { Outlet, createFileRoute } from '@tanstack/react-router'
 import { AccountBar } from '~/features/auth/components/AccountBar'
 import { viewerQuery } from '~/features/auth/auth.query'
 import { tasksQuery } from '~/features/tasks/task.query'
+import { listsQuery } from '~/features/lists/list.query'
 import { markBooted } from '~/features/tasks/task.lastView'
 import { Sidebar } from '~/features/tasks/components/Sidebar'
 import { ListSkeleton } from '~/features/tasks/components/ListSkeleton'
@@ -27,6 +28,7 @@ export const Route = createFileRoute('/_shell')({
   loader: ({ context }) =>
     Promise.all([
       context.queryClient.ensureQueryData(tasksQuery),
+      context.queryClient.ensureQueryData(listsQuery),
       context.queryClient.ensureQueryData(viewerQuery),
     ]),
   component: Shell,

@@ -49,6 +49,33 @@ describe('describeError', () => {
     expect(report.offline).toBe(false)
   })
 
+  /* What actually arrives from a server function: a plain Error carrying only
+     a message, because serialisation drops the class and every own property.
+     The tag is how the code and the id get through (src/server/errors.ts). */
+  it('reads the wire tag a server error carries, and never shows it', () => {
+    const report = describeError(
+      new Error(
+        'You already have a list called “Docs”. Nothing was added. [CONFLICT#k3j4h5g6]',
+      ),
+    )
+    expect(report).toEqual({
+      message: 'You already have a list called “Docs”. Nothing was added.',
+      code: 'CONFLICT',
+      errorId: 'k3j4h5g6',
+      offline: false,
+    })
+  })
+
+  it('an untagged Error is still not trusted, whatever it says', () => {
+    expect(describeError(new Error('Kaboom in some module')).message).toMatch(
+      /Something failed/,
+    )
+    // A tag-like string that is not a tag does not become one.
+    expect(
+      describeError(new Error('see [NOT A TAG] for details')).message,
+    ).toMatch(/Something failed/)
+  })
+
   it('a message without a code is not trusted either', () => {
     expect(describeError({ message: 'anything at all' }).message).not.toBe(
       'anything at all',

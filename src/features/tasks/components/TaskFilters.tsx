@@ -1,7 +1,9 @@
 import { Button } from '~/shared/components/Button'
 import { usePlatform } from '~/shared/hooks/usePlatform'
 import { displayKeys } from '~/shared/lib/keys'
-import { LISTS, STATUS_LABEL, TASK_STATUSES } from '../task.types'
+import { useQuery } from '@tanstack/react-query'
+import { listsQuery } from '~/features/lists/list.query'
+import { STATUS_LABEL, TASK_STATUSES } from '../task.types'
 import type { TaskStatus } from '../task.types'
 import { joinStatus, splitStatus, toFilters } from '../task.search-params'
 import type { TaskSearch } from '../task.search-params'
@@ -44,6 +46,7 @@ export function TaskFilters({
   onChange: (patch: Partial<TaskSearch>) => void
 }) {
   const platform = usePlatform()
+  const { data: lists = [] } = useQuery(listsQuery)
   const active = splitStatus(search.status)
   /* Every control here carries its key in a tooltip (design rule: nothing is
      keyboard-only, and every control shows its key on hover). The keys are
@@ -135,7 +138,7 @@ export function TaskFilters({
         >
           Any
         </Chip>
-        {LISTS.map((list) => (
+        {lists.map((list) => (
           <Chip
             key={list.id}
             pressed={search.list === list.id}

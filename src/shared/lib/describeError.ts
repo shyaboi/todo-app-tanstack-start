@@ -20,7 +20,17 @@ const OFFLINE =
   'Could not reach the server. Nothing was saved — check your connection and try again.'
 const UNKNOWN = 'Something failed. Your change was rolled back — try again.'
 
+/* The tag the server appends so the code and the id survive serialisation,
+   which drops everything but an Error's message (src/server/errors.ts). */
+const WIRE_TAG = /\s*\[([A-Z_]+)#([a-z0-9]{4,16})\]$/
+
 export function describeError(error: unknown): ErrorReport {
+  /* A tagged message is one the server wrote on purpose: it went through
+     toSafeError, so it names no host, no query and no credential. The tag
+     itself never reaches the screen. */
+  const tagged = readWireTag(error)
+  if (tagged) return tagged
+
   if (isAppErrorLike(error)) {
     return {
       message: error.message,
@@ -33,6 +43,29 @@ export function describeError(error: unknown): ErrorReport {
     return { message: OFFLINE, offline: true }
   }
   return { message: UNKNOWN, offline: false }
+}
+
+function readWireTag(error: unknown): ErrorReport | null {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === 'object' &&
+          error !== null &&
+          'message' in error &&
+          typeof error.message === 'string'
+        ? error.message
+        : null
+  if (!message) return null
+
+  const match = WIRE_TAG.exec(message)
+  if (!match) return null
+
+  return {
+    message: message.slice(0, match.index),
+    code: match[1],
+    errorId: match[2],
+    offline: false,
+  }
 }
 
 /* Duck-typed rather than instanceof: the class does not survive the wire, the

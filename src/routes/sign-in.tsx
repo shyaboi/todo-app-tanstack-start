@@ -1,3 +1,4 @@
+import { describeError } from '~/shared/lib/describeError'
 import { useState } from 'react'
 import { createFileRoute, useRouter } from '@tanstack/react-router'
 import { CredentialsForm } from '~/features/auth/components/CredentialsForm'
@@ -29,7 +30,7 @@ function SignInPage() {
           onError: (e: unknown) =>
             setError(
               e instanceof Error
-                ? e.message
+                ? describeError(e).message
                 : 'Could not sign you in. Try again in a moment.',
             ),
         })

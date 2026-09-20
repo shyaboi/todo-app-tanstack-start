@@ -1,5 +1,6 @@
-import { LISTS, listName } from './task.types'
-import type { ListId, Task } from './task.types'
+import { listName } from '~/features/lists/list.types'
+import type { List } from '~/features/lists/list.types'
+import type { Task } from './task.types'
 import { matchesDue } from './task.filters'
 import type { TaskSearch } from './task.search-params'
 
@@ -11,7 +12,7 @@ import type { TaskSearch } from './task.search-params'
 export type ActiveView =
   | { kind: 'inbox' }
   | { kind: 'today' }
-  | { kind: 'list'; id: ListId }
+  | { kind: 'list'; id: string }
   | { kind: 'other' }
 
 /**
@@ -27,11 +28,14 @@ export function activeView(search: Partial<TaskSearch>): ActiveView {
 }
 
 /** The page's h1: what you are looking at, in the sidebar's own words. */
-export function viewTitle(search: Partial<TaskSearch>): string {
+export function viewTitle(
+  search: Partial<TaskSearch>,
+  lists: readonly List[] = [],
+): string {
   const view = activeView(search)
   switch (view.kind) {
     case 'list':
-      return listName(view.id) ?? 'Inbox'
+      return listName(lists, view.id) ?? 'Inbox'
     case 'today':
       return 'Today'
     case 'inbox':
@@ -60,17 +64,20 @@ export function todayCount(tasks: readonly Task[], now: Date): number {
   return tasks.filter((t) => open(t) && matchesDue(t, 'today', now)).length
 }
 
-export function listCount(tasks: readonly Task[], listId: ListId): number {
+export function listCount(tasks: readonly Task[], listId: string): number {
   return tasks.filter((t) => open(t) && t.listId === listId).length
 }
 
-export function listCounts(tasks: readonly Task[]): Record<ListId, number> {
-  const counts = Object.fromEntries(LISTS.map((l) => [l.id, 0])) as Record<
-    ListId,
-    number
-  >
+export function listCounts(
+  tasks: readonly Task[],
+  lists: readonly List[],
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const list of lists) counts[list.id] = 0
   for (const task of tasks) {
-    if (open(task) && task.listId) counts[task.listId] += 1
+    if (open(task) && task.listId && task.listId in counts) {
+      counts[task.listId] = (counts[task.listId] ?? 0) + 1
+    }
   }
   return counts
 }

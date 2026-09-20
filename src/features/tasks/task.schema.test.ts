@@ -5,7 +5,7 @@ import {
   listTasksInput,
   fieldErrorsOf,
 } from './task.schema'
-import { nextStatus, displayRef, listName, STATUS_LABEL } from './task.types'
+import { nextStatus, displayRef, STATUS_LABEL } from './task.types'
 
 describe('createTaskInput', () => {
   it('trims the title and applies the documented defaults', () => {
@@ -57,12 +57,15 @@ describe('createTaskInput', () => {
     ).toBe(true)
   })
 
-  it('rejects a list outside the known vocabulary', () => {
+  it('accepts a list id and rejects anything that is not one', () => {
     expect(
-      createTaskInput.safeParse({ title: 'x', listId: 'ship-v1' }).success,
+      createTaskInput.safeParse({
+        title: 'x',
+        listId: '64b0c0ffee0ddba11ad0c0de',
+      }).success,
     ).toBe(true)
     expect(
-      createTaskInput.safeParse({ title: 'x', listId: 'made-up' }).success,
+      createTaskInput.safeParse({ title: 'x', listId: 'ship-v1' }).success,
     ).toBe(false)
   })
 
@@ -208,8 +211,6 @@ describe('task.types', () => {
     expect(displayRef('507f1f77bcf86cd799439118')).toBe('TSK-9118')
   })
 
-  it('resolves list names, and returns null for none', () => {
-    expect(listName('ship-v1')).toBe('Ship v1')
-    expect(listName(null)).toBeNull()
-  })
+  /* listName moved to ~/features/lists when lists became a collection
+     (PLAN.md D14); it is covered by that module's own suite. */
 })

@@ -17,6 +17,9 @@ const { loadEnv } = await import('./load-env')
 loadEnv()
 
 const { tasks, ensureIndexes } = await import('../src/features/tasks/task.repo')
+const { lists, ensureListIndexes } =
+  await import('../src/features/lists/list.repo')
+const { normaliseListName } = await import('../src/features/lists/list.types')
 const { users, sessions, ensureAuthIndexes } =
   await import('../src/features/auth/auth.repo')
 const { hashPassword } = await import('../src/features/auth/auth.password')
@@ -109,22 +112,33 @@ const graceTasks = [
   ["Grace's second task, also not Ada's", 'docs', 'doing', 'p2', due(2)],
 ] as const
 
+/** The design's four lists. Every owner gets them, by name; ids are theirs. */
+const LIST_NAMES: Record<string, string> = {
+  'ship-v1': 'Ship v1',
+  docs: 'Docs',
+  infra: 'Infra',
+  polish: 'Polish',
+}
+
 try {
   await ensureIndexes()
+  await ensureListIndexes()
   await ensureAuthIndexes()
 
   const taskCol = await tasks()
+  const listCol = await lists()
   const userCol = await users()
   const sessionCol = await sessions()
 
   if (!keep) {
-    const [t, u, s] = [
+    const [t, l, u, s] = [
       await taskCol.deleteMany({}),
+      await listCol.deleteMany({}),
       await userCol.deleteMany({}),
       await sessionCol.deleteMany({}),
     ]
     console.warn(
-      `  cleared     ${t.deletedCount} task(s), ${u.deletedCount} user(s), ${s.deletedCount} session(s)`,
+      `  cleared     ${t.deletedCount} task(s), ${l.deletedCount} list(s), ${u.deletedCount} user(s), ${s.deletedCount} session(s)`,
     )
   }
 
@@ -146,27 +160,44 @@ try {
     )
   }
 
-  const build = (
-    rows: typeof adaTasks | typeof graceTasks,
-    ownerId: ObjectId,
-  ) =>
-    rows.map(([title, listId, status, priority, dueAt]) => ({
-      ownerId,
+  // Each owner gets the four lists, as their own rows with their own ids.
+  const listIds: Record<string, Record<string, ObjectId>> = {}
+  for (const account of SEED_ACCOUNTS) {
+    const ownerId = ownerIds[account.email]!
+    listIds[account.email] = {}
+    for (const [key, name] of Object.entries(LIST_NAMES)) {
+      const { insertedId } = await listCol.insertOne({
+        ownerId,
+        name,
+        key: normaliseListName(name),
+        createdAt: now,
+        updatedAt: now,
+      })
+      listIds[account.email]![key] = insertedId
+    }
+  }
+
+  const build = (rows: typeof adaTasks | typeof graceTasks, email: string) =>
+    rows.map(([title, listKey, status, priority, dueAt]) => ({
+      ownerId: ownerIds[email]!,
       title,
       notes: null,
       status,
       dueAt,
       priority,
-      listId,
+      listId: listIds[email]![listKey]!,
       createdAt: now,
       updatedAt: now,
     }))
 
   const docs = [
-    ...build(adaTasks, ownerIds['ada@example.com']!),
-    ...build(graceTasks, ownerIds['grace@example.com']!),
+    ...build(adaTasks, 'ada@example.com'),
+    ...build(graceTasks, 'grace@example.com'),
   ]
 
+  console.warn(
+    `  lists       ${Object.keys(LIST_NAMES).length} list(s) per owner`,
+  )
   const { insertedCount } = await taskCol.insertMany(docs)
   console.warn(`  inserted    ${insertedCount} task(s)`)
   console.warn(

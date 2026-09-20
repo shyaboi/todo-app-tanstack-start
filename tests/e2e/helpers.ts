@@ -16,6 +16,21 @@ export async function gotoHydrated(
   url = '/',
 ): Promise<Response | null> {
   const response = await page.goto(url)
+  await waitForHydrated(page)
+  return response
+}
+
+/**
+ * Waits until React has claimed the page and the router is live.
+ *
+ * Needed after `page.reload()` as much as after a first visit: a reload
+ * server-renders the markup again, so an assertion about what is ON SCREEN
+ * passes immediately -- while a click still lands on a button with no handler
+ * attached and silently does nothing. That is not a hypothetical: it made a
+ * delete dialog "not open" in the lists spec, on a page that looked perfectly
+ * ready.
+ */
+export async function waitForHydrated(page: Page): Promise<void> {
   await page.waitForFunction(() => {
     const root = document.querySelector('main')
     if (!root) return false
@@ -24,7 +39,6 @@ export async function gotoHydrated(
     )
     return hydrated && '__TSR_ROUTER__' in window
   })
-  return response
 }
 
 /**
@@ -46,6 +60,11 @@ export async function createTask(page: Page, title: string) {
      disabled control and silently do nothing. */
   await row.getByRole('checkbox').and(page.locator(':enabled')).waitFor()
   return row
+}
+
+/** A list name short enough for the 40-character limit, and unique. */
+export function uniqueListName(): string {
+  return `L${Date.now().toString(36).slice(-5)}${Math.random().toString(36).slice(2, 5)}`
 }
 
 export function uniqueTitle(label: string): string {
