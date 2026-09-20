@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { SearchInput, SEARCH_DEBOUNCE_MS } from './SearchInput'
 
 /* Fake timers, so the debounce is asserted by the clock rather than by
@@ -131,28 +130,5 @@ describe('SearchInput', () => {
 
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(document.activeElement).not.toBe(input)
-  })
-
-  it('slash focuses the search from anywhere on the page', async () => {
-    vi.useRealTimers()
-    const user = userEvent.setup()
-    const { input } = setup()
-    expect(document.activeElement).not.toBe(input)
-
-    await user.keyboard('/')
-    expect(document.activeElement).toBe(input)
-    // The slash itself must not land in the box.
-    expect(input).toHaveValue('')
-  })
-
-  it('slash inside another text field is just a slash', () => {
-    setup()
-    const other = document.createElement('input')
-    document.body.appendChild(other)
-    act(() => other.focus())
-
-    fireEvent.keyDown(other, { key: '/' })
-    expect(document.activeElement).toBe(other)
-    other.remove()
   })
 })

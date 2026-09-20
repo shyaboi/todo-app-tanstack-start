@@ -31,7 +31,12 @@ test.describe('component inventory', () => {
     await page.goto('/dev/components')
     // CI and local dev both run Linux/Windows, where the design says ⌘ reads
     // as Ctrl. This is the assertion that would catch a hard-coded glyph.
-    await expect(page.getByText('CtrlK', { exact: true })).toBeVisible()
+    // Spelled out and split into keycaps: a <kbd>Ctrl</kbd>, a plus, a <kbd>K</kbd>.
+    const keys = page.getByRole('heading', { name: 'Keys' }).locator('..')
+    await expect(
+      keys.locator('kbd', { hasText: /^Ctrl$/ }).first(),
+    ).toBeVisible()
+    await expect(keys.locator('kbd', { hasText: /^K$/ }).first()).toBeVisible()
   })
 
   // The real contrast check: axe cannot evaluate colour under jsdom, so the

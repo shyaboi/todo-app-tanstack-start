@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useId, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { Kbd } from '~/shared/components/Kbd'
 import styles from './SearchInput.module.css'
 
@@ -6,12 +6,20 @@ import styles from './SearchInput.module.css'
 export const SEARCH_DEBOUNCE_MS = 120
 
 /**
+ * A fixed id, so the / shortcut can land focus here without the page holding
+ * a ref to a child. One search box per page makes an id the honest choice.
+ */
+export const SEARCH_INPUT_ID = 'task-search-input'
+
+/**
  * The search box. Controlled by whoever owns the URL; this component never
  * navigates. It keeps a local draft so typing is instant, and reports the
  * settled value after a debounce, so every keystroke stays cancellable.
  *
  * `value` is the URL's q. `onChange` is called with the new q once typing
- * pauses -- or immediately on Escape, which clears.
+ * pauses -- or immediately on Escape, which clears. The `/` shortcut that
+ * focuses this field lives in the command registry, not here, so it appears
+ * in the palette and the help overlay like every other binding.
  */
 export function SearchInput({
   value,
@@ -20,7 +28,6 @@ export function SearchInput({
   value: string
   onChange: (q: string) => void
 }) {
-  const id = useId()
   const inputRef = useRef<HTMLInputElement>(null)
 
   /* Three pieces of state. `draft` is what is in the box. `pushed` is the last
@@ -57,22 +64,6 @@ export function SearchInput({
     return () => clearTimeout(timer)
   }, [draft, pushed])
 
-  /* `/` focuses the search from anywhere -- except from inside another text
-     field, where a slash is just a slash (design keyboard rule 01). This lives
-     here for now; the command registry in Sprint 5 absorbs it. */
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey)
-        return
-      if (isTextEntry(event.target)) return
-      event.preventDefault()
-      inputRef.current?.focus()
-      inputRef.current?.select()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [])
-
   function onEscape() {
     // The design's cascade: a first Escape clears, a second leaves the field.
     if (draft !== '') {
@@ -87,7 +78,7 @@ export function SearchInput({
   return (
     <div className={styles.wrap}>
       {/* A real label, visually hidden: the placeholder is not a label. */}
-      <label className="visually-hidden" htmlFor={id}>
+      <label className="visually-hidden" htmlFor={SEARCH_INPUT_ID}>
         Search tasks
       </label>
       <svg
@@ -114,7 +105,7 @@ export function SearchInput({
       </svg>
       <input
         ref={inputRef}
-        id={id}
+        id={SEARCH_INPUT_ID}
         className={styles.input}
         type="search"
         value={draft}
@@ -124,6 +115,7 @@ export function SearchInput({
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Escape') {
+            // preventDefault so the page-level Escape cascade stays out of it.
             e.preventDefault()
             onEscape()
           }
@@ -134,11 +126,4 @@ export function SearchInput({
       </span>
     </div>
   )
-}
-
-function isTextEntry(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  if (target.isContentEditable) return true
-  const tag = target.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
 }

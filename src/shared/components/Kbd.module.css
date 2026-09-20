@@ -12,10 +12,22 @@
   font: var(--text-mono);
   font-weight: 500;
   color: var(--secondary);
+  white-space: nowrap;
 }
 
 .group {
   display: inline-flex;
   align-items: center;
   gap: 3px;
+}
+
+/* Between the keys of one chord: "Ctrl + K". */
+.plus {
+  font: var(--text-mono);
+  color: var(--meta);
+}
+
+/* Between the steps of a sequence: "G  I". */
+.gap {
+  width: 4px;
 }

@@ -1,4 +1,6 @@
 import { StatusPill } from '~/shared/components/Pill'
+import { usePlatform } from '~/shared/hooks/usePlatform'
+import { displayKeys } from '~/shared/lib/keys'
 import { STATUS_LABEL, nextStatus } from '../task.types'
 import type { Task, TaskStatus } from '../task.types'
 import styles from './StatusControl.module.css'
@@ -27,6 +29,8 @@ export function DoneCheckbox({
       aria-label={
         done ? `Mark "${task.title}" as to do` : `Mark "${task.title}" as done`
       }
+      // The keys that set status directly, shown on hover (design rule 03).
+      title={done ? 'Mark as to do · 1' : 'Mark as done · 3'}
       onChange={() => onChange(done ? 'todo' : 'done')}
     />
   )
@@ -41,6 +45,7 @@ export function AdvanceStatusButton({
   onChange: (status: TaskStatus) => void
   disabled?: boolean
 }) {
+  const platform = usePlatform()
   const next = nextStatus(task.status)
   return (
     <button
@@ -50,6 +55,8 @@ export function AdvanceStatusButton({
       // The accessible name states the outcome, so the pill's text is not the
       // only thing carrying meaning.
       aria-label={`${task.title}: ${STATUS_LABEL[task.status]}. Change to ${STATUS_LABEL[next]}`}
+      // Every visible control shows its key on hover (design rule 03).
+      title={`Advance status · ${displayKeys('Space', platform)}`}
       onClick={() => onChange(next)}
     >
       <StatusPill status={task.status} />

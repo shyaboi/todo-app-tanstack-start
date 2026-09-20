@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 
 import { Button } from '~/shared/components/Button'
 import { UndoToast } from '~/shared/components/UndoToast'
+import { useSelection } from '~/shared/hooks/useSelection'
+import { useShortcuts } from '~/shared/hooks/useShortcuts'
 import { AccountBar } from '~/features/auth/components/AccountBar'
 import { viewerQuery } from '~/features/auth/auth.query'
 import {
@@ -11,9 +13,10 @@ import {
   useCreateTask,
   useDeleteTask,
   useRestoreTask,
+  useUpdateTask,
 } from '~/features/tasks/task.query'
 import type { PendingUndo } from '~/features/tasks/task.query'
-import type { Task } from '~/features/tasks/task.types'
+import type { Task, TaskStatus } from '~/features/tasks/task.types'
 import {
   countByStatus,
   filterTasks,
@@ -25,9 +28,17 @@ import {
 import type { SortOrder } from '~/features/tasks/task.filters'
 import { parseTaskSearch, toFilters } from '~/features/tasks/task.search-params'
 import type { TaskSearch } from '~/features/tasks/task.search-params'
+import { buildTaskCommands } from '~/features/tasks/task.commands'
 import { TaskGroups, TaskList } from '~/features/tasks/components/TaskList'
-import { TaskComposer } from '~/features/tasks/components/TaskComposer'
-import { SearchInput } from '~/features/tasks/components/SearchInput'
+import type { RowControls } from '~/features/tasks/components/TaskList'
+import {
+  COMPOSER_INPUT_ID,
+  TaskComposer,
+} from '~/features/tasks/components/TaskComposer'
+import {
+  SEARCH_INPUT_ID,
+  SearchInput,
+} from '~/features/tasks/components/SearchInput'
 import { SortSelect } from '~/features/tasks/components/SortSelect'
 import { TaskFilters } from '~/features/tasks/components/TaskFilters'
 import styles from './index.module.css'
@@ -87,6 +98,11 @@ function TasksPage() {
     })
   }
 
+  /** "Go to" arrives somewhere: the whole search is replaced, not patched. */
+  function goTo(next: TaskSearch) {
+    void navigate({ search: next })
+  }
+
   /* Derived, not stored: the canonical list is the cache, this is what the URL
      says to show from it. `now` is read once per render and only ever compared
      at day granularity inside the filters, so the server and the client agree
@@ -103,12 +119,25 @@ function TasksPage() {
   const groups = sort === 'due' ? groupByDue(visibleTasks, now) : null
   const filtering = hasActiveFilters(filters)
 
-  /* Ephemeral UI state, held locally rather than in a store: losing a pending
-     undo on reload is the correct behaviour (PLAN.md 4.1). */
+  /* The keyboard walks the list in the order it is DRAWN, which in the grouped
+     view is group by group -- not the flat sort the groups were cut from. */
+  const ordered = groups ? groups.flatMap((g) => g.tasks) : visibleTasks
+  const selection = useSelection(ordered.map((t) => t.id))
+  const selected = ordered.find((t) => t.id === selection.selectedId) ?? null
+
+  /* Ephemeral UI state, held locally rather than in a store (PLAN.md 4.1).
+     The edit in progress and the pending delete live here, not in the row,
+     because a click and a shortcut can each start them and must agree. */
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [undo, setUndo] = useState<PendingUndo | null>(null)
+
   const restore = useRestoreTask()
   const remove = useDeleteTask()
   const create = useCreateTask()
+  // Scoped to whichever task is selected, so a shortcut edit queues behind
+  // the row's own in-flight edit of the same task rather than racing it.
+  const updateSelected = useUpdateTask(selection.selectedId ?? 'none')
 
   const dismissUndo = () => setUndo(null)
 
@@ -120,6 +149,73 @@ function TasksPage() {
         setUndo({ undoToken, task, index: context?.index ?? 0 })
       },
     })
+  }
+
+  function setStatus(task: Task, status: TaskStatus) {
+    updateSelected.mutate({ id: task.id, patch: { status } })
+  }
+
+  /* One registry feeds the shortcuts now and the palette in 5.2. Every entry
+     dispatches into the same mutation or navigation the visible control uses,
+     so there is exactly one implementation of each behaviour (PLAN.md 4.5). */
+  const commands = buildTaskCommands({
+    selected,
+    search,
+    updateSearch: (patch) => updateSearch(patch),
+    goTo,
+    setStatus,
+    startEdit: (task) => setEditingId(task.id),
+    requestDelete: (task) => setConfirmingId(task.id),
+    duplicate: (task) =>
+      create.mutate({
+        title: task.title,
+        notes: task.notes,
+        priority: task.priority,
+        listId: task.listId,
+        dueAt: task.dueAt,
+        status: 'todo',
+      }),
+    moveSelection: selection.move,
+    escape: () => {
+      // Dialogs and text fields handle their own Escape before this runs
+      // (design rule: close a panel, then clear search, then drop selection).
+      if (search.q) {
+        updateSearch({ q: undefined }, true)
+      } else if (selection.selectedId) {
+        selection.clear()
+        const active = document.activeElement
+        if (
+          active instanceof HTMLElement &&
+          active.closest('[data-task-row]')
+        ) {
+          active.blur()
+        }
+      }
+    },
+    /* By id rather than by ref: these closures are created during render and
+       handed to the registry, and a ref read inside one cannot be proven by the
+       compiler to happen later. An id has no such ambiguity, and there is one
+       of each control on the page. */
+    focusComposer: () => document.getElementById(COMPOSER_INPUT_ID)?.focus(),
+    focusSearch: () => {
+      const box = document.getElementById(SEARCH_INPUT_ID)
+      if (box instanceof HTMLInputElement) {
+        box.focus()
+        box.select()
+      }
+    },
+  })
+  useShortcuts(commands, selected !== null)
+
+  const controls: RowControls = {
+    selectedId: selection.selectedId,
+    editingId,
+    confirmingId,
+    onSelect: selection.select,
+    onEditingChange: (id, editing) => setEditingId(editing ? id : null),
+    onConfirmingChange: (id, confirming) =>
+      setConfirmingId(confirming ? id : null),
+    onDelete,
   }
 
   return (
@@ -179,9 +275,9 @@ function TasksPage() {
           onCreate={(title) => create.mutate({ title })}
         />
       ) : groups ? (
-        <TaskGroups groups={groups} onDelete={onDelete} now={now} />
+        <TaskGroups groups={groups} controls={controls} now={now} />
       ) : (
-        <TaskList tasks={visibleTasks} onDelete={onDelete} />
+        <TaskList tasks={visibleTasks} controls={controls} />
       )}
 
       {undo && (
