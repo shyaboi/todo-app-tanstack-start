@@ -12,7 +12,24 @@ export default defineConfig({
     baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: /mobile\.spec\.ts/,
+    },
+    /* The design's floor is 360px wide (PLAN.md 7.3). One spec runs there,
+       with touch, so the phone layout is a tested surface rather than a
+       media query nobody opens. */
+    {
+      name: 'mobile',
+      use: {
+        ...devices['Pixel 7'],
+        viewport: { width: 360, height: 740 },
+      },
+      testMatch: /mobile\.spec\.ts/,
+    },
+  ],
   webServer: {
     /* --mode e2e, not an `env` override. Vite loads .env into the server
        process itself and it wins over anything Playwright passes in, so the

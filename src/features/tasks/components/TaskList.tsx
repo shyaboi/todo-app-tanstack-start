@@ -3,6 +3,7 @@ import { PriorityPill } from '~/shared/components/Pill'
 import { Button } from '~/shared/components/Button'
 import { ConfirmDialog } from '~/shared/components/ConfirmDialog'
 import { usePlatform } from '~/shared/hooks/usePlatform'
+import { useSwipe } from '~/shared/hooks/useSwipe'
 import { displayKeys } from '~/shared/lib/keys'
 import { isTempId, useUpdateTask } from '../task.query'
 import { listName } from '../task.types'
@@ -54,6 +55,13 @@ export function TaskList({
 function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
   const update = useUpdateTask(task.id)
   const platform = usePlatform()
+  /* Swipe-to-done (PLAN.md 7.3): either direction toggles done, the same
+     change the checkbox makes. Feedback is the row sliding with the finger;
+     the swipe never counts until the finger lifts. */
+  const swipe = useSwipe(() => {
+    if (creating) return
+    setStatus(task.status === 'done' ? 'todo' : 'done')
+  })
 
   const selected = controls.selectedId === task.id
   const editing = controls.editingId === task.id
@@ -87,6 +95,14 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
       data-task-row={task.id}
       aria-current={selected ? 'true' : undefined}
       onFocus={() => controls.onSelect(task.id)}
+      {...swipe.handlers}
+      style={
+        swipe.dx
+          ? {
+              transform: `translateX(${Math.max(-96, Math.min(96, swipe.dx))}px)`,
+            }
+          : undefined
+      }
     >
       <DoneCheckbox task={task} onChange={setStatus} disabled={creating} />
 

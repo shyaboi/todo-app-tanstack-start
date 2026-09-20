@@ -270,19 +270,45 @@ export function CommandPalette({
           <span className={styles.resultLabel} aria-live="polite">
             {resultLabel}
           </span>
-          <Kbd keys="esc" />
+          <span className={styles.escHint}>
+            <Kbd keys="esc" />
+          </span>
+          {/* The sheet's way out. Hidden where Escape exists. */}
+          <button
+            type="button"
+            className={styles.close}
+            aria-label="Close"
+            onClick={onClose}
+          >
+            ✕
+          </button>
         </div>
 
-        <div className={styles.scopes} aria-hidden="true">
+        {/* Buttons, not hints: on a phone there is no ⇥ to cycle them, and on
+            a desktop a tap is no worse than a key. Each one rewrites the
+            prefix and keeps whatever was typed. */}
+        <div className={styles.scopes}>
           {SCOPES.filter((s) => s.prefix).map((s) => (
-            <span
+            <button
               key={s.name}
+              type="button"
               className={`${styles.scope} ${scope === s.name ? styles.scopeActive : ''}`}
+              aria-pressed={scope === s.name}
+              onClick={() => {
+                setQuery(scope === s.name ? term : `${s.prefix} ${term}`)
+                setHighlight(0)
+                inputRef.current?.focus()
+              }}
             >
-              <span className={styles.scopePrefix}>{s.prefix}</span> {s.name}
-            </span>
+              <span className={styles.scopePrefix} aria-hidden="true">
+                {s.prefix}
+              </span>{' '}
+              {s.name}
+            </button>
           ))}
-          <span className={styles.scopeHint}>Fuzzy match, recent-first</span>
+          <span className={styles.scopeHint} aria-hidden="true">
+            Fuzzy match, recent-first
+          </span>
         </div>
 
         <ul

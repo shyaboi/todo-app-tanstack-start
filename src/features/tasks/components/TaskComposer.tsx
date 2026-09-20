@@ -100,7 +100,9 @@ export function TaskComposer() {
           }
           autoComplete="off"
         />
-        <Kbd keys="N" />
+        <span className={styles.key}>
+          <Kbd keys="N" />
+        </span>
         <Button type="submit" variant="primary" loading={create.isPending}>
           Add task
         </Button>

@@ -122,3 +122,10 @@
     min-height: var(--control-height-sm);
   }
 }
+
+/* Phone: the bottom navigation carries the same links. */
+@media (max-width: 640px) {
+  .nav {
+    display: none;
+  }
+}

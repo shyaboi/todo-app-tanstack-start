@@ -16,6 +16,7 @@ import { Board, toColumns } from '~/features/tasks/components/Board'
 import type { BoardControls } from '~/features/tasks/components/Board'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
 import { ModeHint } from '~/features/tasks/components/ModeHint'
+import { BottomNav } from '~/features/tasks/components/BottomNav'
 import styles from './_shell.board.module.css'
 
 /* /board: the same tasks as the list, laid out by status (PLAN.md 4.2, D5).
@@ -227,6 +228,8 @@ function BoardPage() {
       ) : (
         <Board columns={columns} controls={controls} />
       )}
+
+      <BottomNav onActions={() => setPaletteOpen(true)} />
 
       <ModeHint
         mode={

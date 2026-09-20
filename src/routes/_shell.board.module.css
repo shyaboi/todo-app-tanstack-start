@@ -50,6 +50,11 @@
 
 @media (max-width: 640px) {
   .page {
-    padding: var(--space-8) var(--space-4);
+    padding: var(--space-5) var(--space-4) calc(var(--space-16) + 56px);
+  }
+
+  .title {
+    font-size: 32px;
+    line-height: 36px;
   }
 }

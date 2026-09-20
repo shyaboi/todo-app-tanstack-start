@@ -61,3 +61,10 @@
       color 120ms ease;
   }
 }
+
+/* Phone: no keys to explain, and the bottom navigation has Actions. */
+@media (max-width: 640px) {
+  .strip {
+    display: none;
+  }
+}

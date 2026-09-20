@@ -103,3 +103,41 @@
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* ── Phone: each group becomes a horizontal strip that scrolls on its own,
+   so the page never does (PLAN.md 7.3). Chips grow to a touch target. */
+@media (max-width: 640px) {
+  .panel {
+    padding: var(--space-3) 0 var(--space-2);
+  }
+
+  .group {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 var(--space-3);
+    /* Room for the focus ring, which overflow would otherwise clip. */
+    padding-block: 3px;
+  }
+
+  .group::-webkit-scrollbar {
+    display: none;
+  }
+
+  .legend {
+    float: none;
+    width: auto;
+    flex-shrink: 0;
+    line-height: 40px;
+  }
+
+  .chip {
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .footer {
+    padding: 0 var(--space-3);
+  }
+}

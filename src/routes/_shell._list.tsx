@@ -34,6 +34,7 @@ import {
 } from '~/features/tasks/task.lastView'
 import { KeyboardMap } from '~/shared/components/KeyboardMap'
 import { ModeHint } from '~/features/tasks/components/ModeHint'
+import { BottomNav } from '~/features/tasks/components/BottomNav'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
 import { TaskGroups, TaskList } from '~/features/tasks/components/TaskList'
 import type { RowControls } from '~/features/tasks/components/TaskList'
@@ -322,6 +323,8 @@ function ListLayout() {
         ) : (
           <TaskList tasks={visibleTasks} controls={controls} />
         )}
+
+        <BottomNav onActions={() => setPaletteOpen(true)} />
 
         <ModeHint
           mode={{
