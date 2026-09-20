@@ -9,14 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
+import { Route as ShellListRouteImport } from './routes/_shell._list'
 import { Route as DevComponentsRouteImport } from './routes/dev.components'
+import { Route as ShellListIndexRouteImport } from './routes/_shell._list.index'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ShellRoute = ShellRouteImport.update({
+  id: '/_shell',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignInRoute = SignInRouteImport.update({
@@ -29,41 +30,59 @@ const SignUpRoute = SignUpRouteImport.update({
   path: '/sign-up',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShellListRoute = ShellListRouteImport.update({
+  id: '/_list',
+  getParentRoute: () => ShellRoute,
+} as any)
 const DevComponentsRoute = DevComponentsRouteImport.update({
   id: '/dev/components',
   path: '/dev/components',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShellListIndexRoute = ShellListIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ShellListRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof ShellListIndexRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/dev/components': typeof DevComponentsRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof ShellListIndexRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/dev/components': typeof DevComponentsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
+  '/_shell': typeof ShellRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/_shell/_list': typeof ShellListRouteWithChildren
   '/dev/components': typeof DevComponentsRoute
+  '/_shell/_list/': typeof ShellListIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/sign-in' | '/sign-up' | '/dev/components'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/sign-in' | '/sign-up' | '/dev/components'
-  id: '__root__' | '/' | '/sign-in' | '/sign-up' | '/dev/components'
+  id:
+    | '__root__'
+    | '/_shell'
+    | '/sign-in'
+    | '/sign-up'
+    | '/_shell/_list'
+    | '/dev/components'
+    | '/_shell/_list/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
+  ShellRoute: typeof ShellRouteWithChildren
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   DevComponentsRoute: typeof DevComponentsRoute
@@ -71,11 +90,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
+    '/_shell': {
+      id: '/_shell'
+      path: ''
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+      preLoaderRoute: typeof ShellRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sign-in': {
@@ -92,6 +111,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_shell/_list': {
+      id: '/_shell/_list'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ShellListRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/dev/components': {
       id: '/dev/components'
       path: '/dev/components'
@@ -99,11 +125,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevComponentsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_shell/_list/': {
+      id: '/_shell/_list/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof ShellListIndexRouteImport
+      parentRoute: typeof ShellListRoute
+    }
   }
 }
 
+interface ShellListRouteChildren {
+  ShellListIndexRoute: typeof ShellListIndexRoute
+}
+
+const ShellListRouteChildren: ShellListRouteChildren = {
+  ShellListIndexRoute: ShellListIndexRoute,
+}
+
+const ShellListRouteWithChildren = ShellListRoute._addFileChildren(
+  ShellListRouteChildren,
+)
+
+interface ShellRouteChildren {
+  ShellListRoute: typeof ShellListRouteWithChildren
+}
+
+const ShellRouteChildren: ShellRouteChildren = {
+  ShellListRoute: ShellListRouteWithChildren,
+}
+
+const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
+  ShellRoute: ShellRouteWithChildren,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   DevComponentsRoute: DevComponentsRoute,
