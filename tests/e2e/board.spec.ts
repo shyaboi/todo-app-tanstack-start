@@ -1,0 +1,168 @@
+import { test, expect } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
+import type { Page } from '@playwright/test'
+import {
+  createTask,
+  gotoHydrated,
+  signIn,
+  uniqueTitle,
+  waitForServerAck,
+} from './helpers'
+
+/* The board, driven by keyboard first (PLAN.md D11). Pointer drag-and-drop,
+   when it lands, must dispatch into the same moves these tests exercise. */
+
+const column = (page: Page, name: string) =>
+  page.getByRole('region', { name: new RegExp(`^${name}`) })
+const card = (page: Page, title: string) =>
+  page.getByRole('listitem').filter({ hasText: title })
+const live = (page: Page) => page.getByTestId('board-announcement')
+
+/** Creates a task on the list, then goes to the board. */
+async function boardWith(page: Page, title: string) {
+  await gotoHydrated(page)
+  await createTask(page, title)
+  await page.keyboard.press('g')
+  await page.keyboard.press('b')
+  await expect(page).toHaveURL(/\/board$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Board')
+}
+
+test('G B opens the board, three columns, each a labelled region', async ({
+  page,
+}) => {
+  await signIn(page)
+  await gotoHydrated(page)
+  await page.keyboard.press('g')
+  await page.keyboard.press('b')
+  await expect(page).toHaveURL(/\/board$/)
+  for (const name of ['To do', 'In progress', 'Done']) {
+    await expect(column(page, name)).toBeVisible()
+    await expect(
+      column(page, name).getByRole('heading', { level: 2 }),
+    ).toContainText(name)
+  }
+  // The sidebar knows where you are.
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Views' })
+      .getByRole('link', { name: /^Board/ }),
+  ).toHaveAttribute('aria-current', 'page')
+})
+
+test('⇧→ moves the selected card to the next column, and it persists', async ({
+  page,
+}) => {
+  const title = uniqueTitle('board move')
+  await boardWith(page, title)
+
+  await page.keyboard.press('ArrowDown')
+  await expect(card(page, title)).toBeFocused()
+  await expect(column(page, 'To do').getByText(title)).toBeVisible()
+
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect(column(page, 'In progress').getByText(title)).toBeVisible()
+  await expect(live(page)).toContainText('In progress')
+  // Focus followed the card into its new column.
+  await expect(card(page, title)).toBeFocused()
+
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect(column(page, 'Done').getByText(title)).toBeVisible()
+  // Nowhere further to go: the key is inert, the card stays.
+  await page.keyboard.press('Shift+ArrowRight')
+  await expect(column(page, 'Done').getByText(title)).toBeVisible()
+
+  // Optimistic UI: the column moved before the server was told. Reloading
+  // straight away races the write, so wait for the acknowledgement first.
+  await waitForServerAck(page, title)
+  await page.reload()
+  await expect(column(page, 'Done').getByText(title)).toBeVisible()
+})
+
+test('Space picks a card up, the arrows carry it, Space drops it', async ({
+  page,
+}) => {
+  const title = uniqueTitle('board carry')
+  await boardWith(page, title)
+  await page.keyboard.press('ArrowDown')
+  await expect(card(page, title)).toBeFocused()
+
+  await page.keyboard.press('Space')
+  await expect(
+    card(page, title).getByRole('button', { name: `Drop "${title}"` }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(live(page)).toContainText('Picked up')
+
+  await page.keyboard.press('ArrowRight')
+  await expect(column(page, 'In progress').getByText(title)).toBeVisible()
+  await page.keyboard.press('ArrowLeft')
+  await expect(column(page, 'To do').getByText(title)).toBeVisible()
+
+  await page.keyboard.press('Space')
+  await expect(
+    card(page, title).getByRole('button', { name: `Pick up "${title}"` }),
+  ).toHaveAttribute('aria-pressed', 'false')
+  // Not lifted any more: → walks the selection, the card stays where it is.
+  await page.keyboard.press('ArrowRight')
+  await expect(column(page, 'To do').getByText(title)).toBeVisible()
+})
+
+test('Escape drops a lifted card without moving it', async ({ page }) => {
+  const title = uniqueTitle('board escape')
+  await boardWith(page, title)
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Space')
+  await expect(live(page)).toContainText('Picked up')
+  await page.keyboard.press('Escape')
+  await expect(live(page)).toContainText('Dropped')
+  await expect(column(page, 'To do').getByText(title)).toBeVisible()
+})
+
+test('↵ opens the card in the list’s detail panel', async ({ page }) => {
+  const title = uniqueTitle('board open')
+  await boardWith(page, title)
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/t\/[0-9a-f]{24}/)
+  await expect(
+    page
+      .getByRole('complementary', { name: 'Task details' })
+      .getByLabel('Title'),
+  ).toHaveValue(title)
+})
+
+test('V switches between the views, and a bare visit remembers the last one', async ({
+  page,
+}) => {
+  await signIn(page)
+  await gotoHydrated(page)
+  const h1 = page.getByRole('heading', { level: 1 })
+
+  /* The URL changes before the page does: for a moment the list's key
+     listener is still the one attached. Waiting on the heading, not the URL,
+     is waiting for the page that will actually receive the next key. */
+  await page.keyboard.press('v')
+  await expect(h1).toHaveText('Board')
+  await page.keyboard.press('v')
+  await expect(h1).toHaveText('Inbox')
+  await expect(page).toHaveURL(/\/$|\/\?/)
+
+  await page.keyboard.press('g')
+  await page.keyboard.press('b')
+  await expect(h1).toHaveText('Board')
+  await gotoHydrated(page, '/')
+  await expect(page).toHaveURL(/\/board$/)
+
+  // A filtered link is not a bare visit; it always shows what it says.
+  await gotoHydrated(page, '/?status=todo')
+  await expect(page).toHaveURL(/status=todo/)
+})
+
+test('the board has no accessibility violations', async ({ page }) => {
+  await signIn(page)
+  await gotoHydrated(page, '/board')
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze()
+  expect(results.violations).toEqual([])
+})

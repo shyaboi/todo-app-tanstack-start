@@ -1,5 +1,6 @@
-import { Link, useSearch } from '@tanstack/react-router'
+import { Link, useLocation, useSearch } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import { Kbd } from '~/shared/components/Kbd'
 import { tasksQuery } from '../task.query'
 import { LISTS } from '../task.types'
@@ -8,9 +9,9 @@ import { activeView, inboxCount, listCounts, todayCount } from '../task.views'
 import styles from './Sidebar.module.css'
 
 /**
- * The views, as links. Each one is a URL the list already understands, so the
- * sidebar adds no state of its own -- it is the same navigation as G I and
- * G T, made visible (design rule: nothing is keyboard-only).
+ * The views, as links. Each one is a URL the app already understands, so the
+ * sidebar adds no state of its own -- it is the same navigation as G I, G T
+ * and G B, made visible (design rule: nothing is keyboard-only).
  *
  * Deliberately NOT a <ul>. It is a navigation landmark holding links, which is
  * complete as accessibility goes, and it keeps every `listitem` on the page
@@ -21,7 +22,10 @@ export function Sidebar() {
   // Loose on purpose: the sidebar is rendered above the route that validates
   // these, and an unrelated route underneath has none.
   const search: Partial<TaskSearch> = useSearch({ strict: false })
-  const view = activeView(search)
+  const pathname = useLocation({ select: (l) => l.pathname })
+  const onBoard = pathname === '/board'
+  // On the board no list view is active, whatever the search says.
+  const view = onBoard ? ({ kind: 'other' } as const) : activeView(search)
   const now = new Date()
   const perList = listCounts(tasks)
 
@@ -52,6 +56,9 @@ export function Sidebar() {
       >
         Today
       </ViewLink>
+      <ViewLink to="/board" active={onBoard} keys="G B">
+        Board
+      </ViewLink>
 
       <p className={styles.heading} aria-hidden="true">
         Lists
@@ -79,26 +86,17 @@ function ViewLink({
   keys,
   children,
 }: {
-  to: '/'
-  search: TaskSearch
+  to: '/' | '/board'
+  search?: TaskSearch
   active: boolean
-  count: number
+  /** Open tasks behind the link. Absent for a view of everything. */
+  count?: number
   keys?: string
   children: string
 }) {
-  return (
-    <Link
-      to={to}
-      search={search}
-      /* Active is decided by activeView, not by the Link. Left to itself the
-         Link matches search params PARTIALLY, so `search={{}}` is "active" on
-         every URL and Inbox never stops claiming the page. `exact` makes its
-         own test narrower than ours in every case, so it never adds an
-         aria-current that activeView would not. */
-      activeOptions={{ exact: true }}
-      className={`${styles.link} ${active ? styles.active : ''}`}
-      aria-current={active ? 'page' : undefined}
-    >
+  const className = `${styles.link} ${active ? styles.active : ''}`
+  const body: ReactNode = (
+    <>
       <span className={styles.label}>{children}</span>
       {keys && (
         <span className={styles.keys} aria-hidden="true">
@@ -106,7 +104,33 @@ function ViewLink({
         </span>
       )}
       {/* Read as part of the link's name: "Inbox, 8". */}
-      <span className={styles.count}>{count}</span>
+      {count !== undefined && <span className={styles.count}>{count}</span>}
+    </>
+  )
+
+  /* Active is decided by activeView, not by the Link. Left to itself the Link
+     matches search params PARTIALLY, so `search={{}}` is "active" on every
+     URL and Inbox never stops claiming the page. `exact` makes its own test
+     narrower than ours in every case, so it never adds an aria-current that
+     activeView would not. */
+  return to === '/board' ? (
+    <Link
+      to="/board"
+      activeOptions={{ exact: true }}
+      className={className}
+      aria-current={active ? 'page' : undefined}
+    >
+      {body}
+    </Link>
+  ) : (
+    <Link
+      to="/"
+      search={search ?? {}}
+      activeOptions={{ exact: true }}
+      className={className}
+      aria-current={active ? 'page' : undefined}
+    >
+      {body}
     </Link>
   )
 }

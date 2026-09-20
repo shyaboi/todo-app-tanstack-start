@@ -36,6 +36,9 @@ function ctx(over: Partial<TaskCommandContext> = {}): TaskCommandContext {
     focusSearch: vi.fn(),
     openPalette: vi.fn(),
     openHelp: vi.fn(),
+    view: 'list',
+    goToBoard: vi.fn(),
+    toggleView: vi.fn(),
     ...over,
   }
 }
@@ -57,10 +60,11 @@ describe('the registry as a whole', () => {
   })
 
   it('registers nothing for bindings that have no home yet', () => {
-    // Board keys wait for 6.4; ⌘Z and ⇧1…3 are cut. A no-op command in the
-    // palette would be a promise the app does not keep.
+    // The arrows belong to the board's registry, not the list's; ⌘Z and ⇧1…3
+    // are cut. A no-op command in the palette would be a promise the app
+    // does not keep.
     const keys = buildTaskCommands(ctx()).map((c) => c.keys)
-    for (const absent of ['←', '→', '⇧→', 'G B', 'V', '⌘Z', '⇧⌘Z']) {
+    for (const absent of ['←', '→', '⇧→', '⇧←', '⌘Z', '⇧⌘Z']) {
       expect(keys).not.toContain(absent)
     }
   })

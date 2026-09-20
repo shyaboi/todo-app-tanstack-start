@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useEffectEvent, useState } from 'react'
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 
@@ -27,10 +27,11 @@ import type { SortOrder } from '~/features/tasks/task.filters'
 import { parseTaskSearch, toFilters } from '~/features/tasks/task.search-params'
 import { viewTitle } from '~/features/tasks/task.views'
 import type { TaskSearch } from '~/features/tasks/task.search-params'
+import { buildTaskCommands } from '~/features/tasks/task.commands'
 import {
-  UNBUILT_BINDINGS,
-  buildTaskCommands,
-} from '~/features/tasks/task.commands'
+  bootRedirectsToBoard,
+  rememberView,
+} from '~/features/tasks/task.lastView'
 import { KeyboardMap } from '~/shared/components/KeyboardMap'
 import { ModeHint } from '~/features/tasks/components/ModeHint'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
@@ -131,6 +132,19 @@ function ListLayout() {
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+
+  /* D5: the list is the view to come back to -- unless this is the bare visit
+     that is about to bounce to the board, in which case the board will say so
+     itself. An effect event, so the search is read without becoming a
+     dependency that would re-run this on every filter change. */
+  const remember = useEffectEvent(() => {
+    if (!bootRedirectsToBoard(Object.keys(search).length > 0)) {
+      rememberView('list')
+    }
+  })
+  useEffect(() => {
+    remember()
+  }, [])
   const [undo, setUndo] = useState<PendingUndo | null>(null)
 
   const restore = useRestoreTask()
@@ -223,6 +237,9 @@ function ListLayout() {
     },
     openPalette: () => setPaletteOpen(true),
     openHelp: () => setHelpOpen(true),
+    view: 'list',
+    goToBoard: () => void navigate({ to: '/board' }),
+    toggleView: () => void navigate({ to: '/board' }),
   })
   useShortcuts(commands, selected !== null)
 
@@ -307,7 +324,13 @@ function ListLayout() {
         )}
 
         <ModeHint
-          hasSelection={selected !== null}
+          mode={{
+            keys: '1 2 3',
+            text:
+              selected !== null
+                ? 'set the selected task’s status'
+                : 'filter the list by status',
+          }}
           onOpenPalette={() => setPaletteOpen(true)}
           onOpenHelp={() => setHelpOpen(true)}
         />
@@ -316,7 +339,6 @@ function ListLayout() {
           <KeyboardMap
             commands={commands}
             hasSelection={selected !== null}
-            unbuilt={UNBUILT_BINDINGS}
             onClose={() => setHelpOpen(false)}
           />
         )}

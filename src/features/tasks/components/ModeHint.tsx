@@ -4,21 +4,23 @@ import styles from './ModeHint.module.css'
 /**
  * The design's mode hint strip.
  *
- * `1 2 3` mean two different things depending on whether a row is selected,
- * which is the one genuinely modal thing in the app -- so it is the one thing
- * that gets a permanent readout. The strip also carries the visible controls
+ * Each page has one genuinely modal thing -- on the list, `1 2 3` mean two
+ * different things depending on whether a row is selected; on the board, the
+ * arrows either walk the columns or carry a picked-up card -- so that one
+ * thing gets a permanent readout. The strip also carries the visible controls
  * for ⌘K and ?, the two shortcuts that would otherwise have none.
  *
- * Announced politely rather than hidden: the mode is the reason a number key
- * did one thing a moment ago and another now, which a screen reader user needs
- * as much as anyone. The key hints inside it are decorative and marked so.
+ * Announced politely rather than hidden: the mode is the reason a key did one
+ * thing a moment ago and another now, which a screen reader user needs as
+ * much as anyone. The key hints inside it are decorative and marked so.
  */
 export function ModeHint({
-  hasSelection,
+  mode,
   onOpenPalette,
   onOpenHelp,
 }: {
-  hasSelection: boolean
+  /** The keys whose meaning depends on state, and what they do right now. */
+  mode: { keys: string; text: string }
   onOpenPalette: () => void
   onOpenHelp: () => void
 }) {
@@ -26,11 +28,9 @@ export function ModeHint({
     <div className={styles.strip}>
       <p className={styles.mode} aria-live="polite">
         <span className={styles.keys} aria-hidden="true">
-          <Kbd keys="1 2 3" />
+          <Kbd keys={mode.keys} />
         </span>
-        {hasSelection
-          ? 'set the selected task’s status'
-          : 'filter the list by status'}
+        {mode.text}
       </p>
 
       <div className={styles.actions}>

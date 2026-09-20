@@ -13,6 +13,7 @@ import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as ShellListRouteImport } from './routes/_shell._list'
+import { Route as ShellBoardRouteImport } from './routes/_shell.board'
 import { Route as DevComponentsRouteImport } from './routes/dev.components'
 import { Route as ShellListIndexRouteImport } from './routes/_shell._list.index'
 import { Route as ShellListTTodoIdRouteImport } from './routes/_shell._list.t.$todoId'
@@ -35,6 +36,11 @@ const ShellListRoute = ShellListRouteImport.update({
   id: '/_list',
   getParentRoute: () => ShellRoute,
 } as any)
+const ShellBoardRoute = ShellBoardRouteImport.update({
+  id: '/board',
+  path: '/board',
+  getParentRoute: () => ShellRoute,
+} as any)
 const DevComponentsRoute = DevComponentsRouteImport.update({
   id: '/dev/components',
   path: '/dev/components',
@@ -55,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/': typeof ShellListIndexRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/board': typeof ShellBoardRoute
   '/dev/components': typeof DevComponentsRoute
   '/t/$todoId': typeof ShellListTTodoIdRoute
 }
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/': typeof ShellListIndexRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/board': typeof ShellBoardRoute
   '/dev/components': typeof DevComponentsRoute
   '/t/$todoId': typeof ShellListTTodoIdRoute
 }
@@ -71,21 +79,25 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/_shell/_list': typeof ShellListRouteWithChildren
+  '/_shell/board': typeof ShellBoardRoute
   '/dev/components': typeof DevComponentsRoute
   '/_shell/_list/': typeof ShellListIndexRoute
   '/_shell/_list/t/$todoId': typeof ShellListTTodoIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/sign-in' | '/sign-up' | '/dev/components' | '/t/$todoId'
+  fullPaths:
+    '/' | '/sign-in' | '/sign-up' | '/board' | '/dev/components' | '/t/$todoId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/sign-in' | '/sign-up' | '/dev/components' | '/t/$todoId'
+  to:
+    '/' | '/sign-in' | '/sign-up' | '/board' | '/dev/components' | '/t/$todoId'
   id:
     | '__root__'
     | '/_shell'
     | '/sign-in'
     | '/sign-up'
     | '/_shell/_list'
+    | '/_shell/board'
     | '/dev/components'
     | '/_shell/_list/'
     | '/_shell/_list/t/$todoId'
@@ -128,6 +140,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellListRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/board': {
+      id: '/_shell/board'
+      path: '/board'
+      fullPath: '/board'
+      preLoaderRoute: typeof ShellBoardRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/dev/components': {
       id: '/dev/components'
       path: '/dev/components'
@@ -168,10 +187,12 @@ const ShellListRouteWithChildren = ShellListRoute._addFileChildren(
 
 interface ShellRouteChildren {
   ShellListRoute: typeof ShellListRouteWithChildren
+  ShellBoardRoute: typeof ShellBoardRoute
 }
 
 const ShellRouteChildren: ShellRouteChildren = {
   ShellListRoute: ShellListRouteWithChildren,
+  ShellBoardRoute: ShellBoardRoute,
 }
 
 const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
