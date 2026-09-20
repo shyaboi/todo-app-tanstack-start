@@ -169,6 +169,8 @@ Five tiers, each with a different job:
 
 That last tier exists because it was missing. A build that passed every other check reached a deployment and **404'd on every path** — there was no server in the output at all. A later one booted and then failed its first database call with `Node.js crypto module is required for SCRAM-SHA-1 authentication`, because bundling had rewritten the driver's conditional `require`. Every tier above tests _source_; nothing loaded the bundle. Now something does.
 
+If a local E2E run fails on a count — "expected 10, received 11" — the database has leftovers from an earlier run. `npm run seed:e2e` resets it. CI gets a fresh container and seeds before every run, so it never sees this.
+
 Accessibility is gated, not audited once: `vitest-axe` on every component suite and Playwright's axe on every route, and CI fails on a new violation.
 
 ---

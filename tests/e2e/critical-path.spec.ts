@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
 import {
   openFilters,
-  signIn,
   uniqueTitle,
   waitForHydrated,
   waitForServerAck,
@@ -22,36 +21,44 @@ import {
  * The keyboard-only variant of the same flow is `keyboard-only.spec.ts` --
  * one flow, two input devices, not two flows.
  *
- * It signs in as Ada so the seeded list is on screen: a flow that runs
- * against an empty guest account proves the writes but not that the app
- * renders a real database.
+ * It runs as a GUEST, deliberately. The suite is fully parallel against one
+ * database, so a spec that creates tasks under the shared seeded account
+ * changes what every count-based assertion elsewhere sees -- this one did,
+ * and took eleven other tests down with it. A guest gets a fresh account per
+ * browser context, owns everything it creates, and can therefore assert
+ * exact counts that mean something.
  */
 test('the critical path, with a pointer', async ({ page }) => {
   const title = uniqueTitle('critical path')
-  await signIn(page)
+  const decoy = uniqueTitle('not the one')
 
-  // ── 1 · Load. The list is in the FIRST response, not fetched after it
-  //   (AC2, AC7). Asserted against the raw HTML, which is the only thing that
+  // ── 1 · Load (AC2). The shell and the page inside it arrive in the FIRST
+  //   response. Asserted against the raw HTML, which is the only thing that
   //   can tell a server render from a fast client one.
-  const response = await page.goto('/')
-  expect(response?.status()).toBe(200)
-  expect(await response!.text()).toContain('Fix focus trap')
-  // A raw goto, so that the HTML above is the SERVER's: the rest of the flow
-  // clicks things, and a click before hydration silently does nothing.
+  const first = await page.goto('/')
+  expect(first?.status()).toBe(200)
+  const firstHtml = await first!.text()
+  expect(firstHtml).toContain('<h1')
+  expect(firstHtml).toContain('Inbox')
+  // A brand-new account, so this is the first-run empty state, not a failure.
+  expect(firstHtml).toContain('Nothing here yet')
+  // The rest of the flow clicks things, and a click before hydration does
+  // nothing at all, silently.
   await waitForHydrated(page)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Inbox')
-  await expect(page.getByRole('listitem')).toHaveCount(10)
 
-  // ── 2 · Create (AC1). The row is on screen before the server answers; the
-  //   acknowledgement is waited for separately so later steps are not racing
-  //   a write still in flight.
-  const created = waitForServerAck(page, title)
-  await page.getByLabel('Task title').fill(title)
-  await page.getByRole('button', { name: 'Add task' }).click()
+  // ── 2 · Create (AC1), twice: the second task is what search and filter
+  //   have to exclude later. The rows appear before the server answers, so
+  //   each acknowledgement is waited for rather than assumed.
+  for (const t of [decoy, title]) {
+    const saved = waitForServerAck(page, t)
+    await page.getByLabel('Task title').fill(t)
+    await page.getByRole('button', { name: 'Add task' }).click()
+    await expect(page.getByText(t, { exact: true })).toBeVisible()
+    await saved
+  }
   const row = page.getByRole('listitem').filter({ hasText: title })
-  await expect(row).toBeVisible()
-  await created
   await expect(row.getByRole('checkbox')).toBeEnabled()
+  await expect(page.getByRole('listitem')).toHaveCount(2)
 
   // ── 3 · Update status (AC3, AC6). Through the pill, which is the control
   //   the design puts on the row; the checkbox and Space reach the same
@@ -61,15 +68,16 @@ test('the critical path, with a pointer', async ({ page }) => {
   await expect(row.getByText('In progress')).toBeVisible()
   await advanced
 
-  // ── 4 · Search (AC5). Derived from the one cached list, and in the URL, so
-  //   the result set is a link.
+  // ── 4 · Search (AC5). Derived from the one cached list, and written to the
+  //   URL, so the result set is a link.
   await page
     .getByRole('searchbox', { name: 'Search tasks' })
     .fill('critical path')
   await expect(page.getByRole('listitem')).toHaveCount(1)
+  await expect(row).toBeVisible()
   await expect(page).toHaveURL(/q=critical\+path/)
 
-  // ── 5 · Filter (AC6). On top of the search: both narrow the same list.
+  // ── 5 · Filter (AC6), on top of the search: both narrow the same list.
   await openFilters(page)
   await page.getByRole('button', { name: /^In progress/ }).click()
   await expect(page).toHaveURL(/status=doing/)
@@ -97,14 +105,19 @@ test('the critical path, with a pointer', async ({ page }) => {
   await restored
 
   // ── 8 · Reload, and verify it persisted (AC7). The filters are still in
-  //   the URL, so this also proves the address survived the round trip.
-  await page.reload()
+  //   the URL, so this proves the address survived the round trip too.
+  const reloaded = await page.reload()
   await expect(page).toHaveURL(/q=critical\+path/)
   await expect(row).toBeVisible()
   await expect(row.getByText('In progress')).toBeVisible()
 
-  /* And it is the DATABASE holding it, not this tab: a second page, with its
-     own cache and its own render, sees the same task. */
+  /* And the reloaded HTML carries it: the task went to MongoDB, came back
+     through the loader, and was rendered on the server. AC2 and AC7 in one
+     assertion, against real data rather than a fixture. */
+  expect(await reloaded!.text()).toContain(title)
+
+  /* Last, that it is the DATABASE holding it and not this tab: a second page,
+     with its own cache and its own render, sees the same task. */
   const fresh = await page.context().newPage()
   await fresh.goto('/?q=critical+path')
   await expect(fresh.getByText(title, { exact: true })).toBeVisible()
