@@ -62,6 +62,18 @@ export async function createTask(page: Page, title: string) {
   return row
 }
 
+/**
+ * Opens the top bar’s filter panel, where the status, due and list chips
+ * live since 8.4a. Idempotent: already-open stays open.
+ */
+export async function openFilters(page: Page): Promise<void> {
+  const toggle = page.getByRole('button', { name: /^Filters/ })
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    await toggle.click()
+  }
+  await page.getByRole('group', { name: 'Status' }).waitFor()
+}
+
 /** A list name short enough for the 40-character limit, and unique. */
 export function uniqueListName(): string {
   return `L${Date.now().toString(36).slice(-5)}${Math.random().toString(36).slice(2, 5)}`

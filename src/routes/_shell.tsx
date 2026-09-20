@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { Outlet, createFileRoute } from '@tanstack/react-router'
-import { AccountBar } from '~/features/auth/components/AccountBar'
 import { viewerQuery } from '~/features/auth/auth.query'
 import { tasksQuery } from '~/features/tasks/task.query'
 import { listsQuery } from '~/features/lists/list.query'
@@ -60,8 +59,9 @@ function Shell() {
   return (
     <div className={styles.shell}>
       <Sidebar />
+      {/* Each view brings its own top bar: the list's carries filters, the
+          board's does not filter at all (PLAN.md 8.4a). */}
       <div className={styles.content}>
-        <AccountBar />
         <Outlet />
       </div>
     </div>

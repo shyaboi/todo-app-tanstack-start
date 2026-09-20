@@ -1,9 +1,12 @@
+/* The flexible item in whatever row it sits in, but with a basis and a floor:
+   next to a long email address a zero-basis item shrinks to an empty box, and
+   it did -- the field disappeared out of the top bar the day it moved there. */
 .wrap {
   position: relative;
   display: flex;
   align-items: center;
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 260px;
+  min-width: 160px;
 }
 
 .icon {

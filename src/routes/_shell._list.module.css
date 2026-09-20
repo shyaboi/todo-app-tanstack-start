@@ -6,12 +6,22 @@
   min-height: 100%;
 }
 
-.page {
+/* The top bar spans this, the page scrolls under it. */
+.column {
   flex: 1;
   min-width: 0;
-  max-width: 760px;
-  margin: 0 auto;
-  padding: var(--space-8) var(--space-6) var(--space-16);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Full width, not a column down the middle: with search and filters lifted
+   into the bar, the list has the whole content area, and a task row that
+   stops at 900px on a 2560px screen is a column of whitespace either side.
+   The gutter is fluid, so it runs to the edges at every width without ever
+   touching them. */
+.page {
+  width: 100%;
+  padding: var(--space-6) var(--gutter) var(--space-16);
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
@@ -61,7 +71,7 @@
    so the last row is never underneath it. Fluid to 360px. */
 @media (max-width: 640px) {
   .page {
-    padding: var(--space-5) var(--space-4) calc(var(--space-16) + 56px);
+    padding: var(--space-5) var(--gutter) calc(var(--space-16) + 56px);
   }
 
   .title {

@@ -39,6 +39,19 @@ jobs:
           fi
           echo "No tracked env files."
 
+      # `git ls-files` only sees the CURRENT tree. A secret committed once and
+      # deleted later is still in the history forever, and that is the case
+      # worth failing over (PLAN.md 8.2).
+      - name: no env file was EVER committed
+        run: |
+          ever=$(git log --all --pretty=format: --name-only --diff-filter=A \
+                   -- '.env' '.env.*' | sort -u | grep -v '^$' | grep -v '^\.env\.example$' || true)
+          if [ -n "$ever" ]; then
+            echo "::error::An env file exists in history: $ever - rotate the credential, then rewrite history"
+            exit 1
+          fi
+          echo "No env file has ever been committed."
+
       # The binary directly, not gitleaks-action. The action scans the range
       # BEFORE^..AFTER; on a first push BEFORE is the root commit, whose parent
       # does not exist, so the scan aborts having read 0 bytes and still reports
@@ -106,6 +119,46 @@ jobs:
       # Asserts at the service layer that one account cannot reach another's
       # tasks. A browser-only guard cannot make this pass (PLAN.md 4.8).
       - run: npm run test:integration
+
+  # PLAN.md 8.2. Boots the file the host actually runs. Every other job tests
+  # source, which is how a green build reached a deployment and 404'd on every
+  # path, and how a second one failed its first database call. A separate job
+  # so its failure reads as "the build is broken", not "a test is flaky".
+  artifact:
+    name: built artifact
+    runs-on: ubuntu-latest
+
+    services:
+      mongo:
+        image: mongo:8
+        ports: ['27017:27017']
+
+    env:
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB: tasker_artifact
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+
+      - name: wait for mongo
+        run: |
+          for i in $(seq 1 30); do
+            if (exec 3<>/dev/tcp/localhost/27017) 2>/dev/null; then
+              echo "mongo accepting connections after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::mongo did not accept connections within 30s"; exit 1
+
+      - run: npm run build
+      # Boots .output/server/index.mjs, asks it for every route, greps every
+      # shipped byte for a value from env.ts, and holds the bundle to budget.
+      - run: npm run test:artifact
 
   e2e:
     name: critical path

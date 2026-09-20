@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Outlet, createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { KeyboardMap } from '~/shared/components/KeyboardMap'
 import { useShortcuts } from '~/shared/hooks/useShortcuts'
@@ -17,6 +17,7 @@ import { Board, toColumns } from '~/features/tasks/components/Board'
 import type { BoardControls } from '~/features/tasks/components/Board'
 import { CommandPalette } from '~/features/tasks/components/CommandPalette'
 import { ModeHint } from '~/features/tasks/components/ModeHint'
+import { AccountBar, GuestNote } from '~/features/auth/components/AccountBar'
 import { BottomNav } from '~/features/tasks/components/BottomNav'
 import styles from './_shell.board.module.css'
 
@@ -132,8 +133,10 @@ function BoardPage() {
     setAnnouncement(`Moved "${task.title}" to ${STATUS_LABEL[status]}`)
   }
 
+  /* Into the board's own detail slot, not the list's: the board stays on
+     screen behind the panel (PLAN.md 8.4b). */
   function openTask(task: Task) {
-    void navigate({ to: '/t/$todoId', params: { todoId: task.id } })
+    void navigate({ to: '/board/t/$todoId', params: { todoId: task.id } })
   }
 
   const commands = buildBoardCommands({
@@ -203,77 +206,88 @@ function BoardPage() {
   }
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Board</h1>
-        <p className={styles.count}>
-          {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
-        </p>
-      </header>
-
-      {/* Announced politely: where the card went is the answer to the key. */}
-      <p
-        className="visually-hidden"
-        aria-live="polite"
-        data-testid="board-announcement"
-      >
-        {announcement}
-      </p>
-
-      {tasks.length === 0 ? (
-        <div className={styles.empty}>
-          <p className={styles.emptyTitle}>Nothing on the board yet</p>
-          <p className={styles.emptyBody}>
-            Add a task from the list and it appears here under its status.
-          </p>
+    <div className={styles.split}>
+      <main className={styles.page}>
+        {/* The board does not filter, so its bar carries only who you are. */}
+        <div className={styles.bar}>
+          <AccountBar />
         </div>
-      ) : (
-        <Board columns={columns} controls={controls} />
-      )}
+        <GuestNote />
 
-      <BottomNav onActions={() => setPaletteOpen(true)} />
+        <header className={styles.header}>
+          <h1 className={styles.title}>Board</h1>
+          <p className={styles.count}>
+            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'}
+          </p>
+        </header>
 
-      <ModeHint
-        mode={
-          lifted
-            ? { keys: '← →', text: 'carry the picked-up card' }
-            : selected
-              ? { keys: '← →', text: 'move between columns' }
-              : { keys: '↑ ↓', text: 'select a card' }
-        }
-        onOpenPalette={() => setPaletteOpen(true)}
-        onOpenHelp={() => setHelpOpen(true)}
-      />
+        {/* Announced politely: where the card went is the answer to the key. */}
+        <p
+          className="visually-hidden"
+          aria-live="polite"
+          data-testid="board-announcement"
+        >
+          {announcement}
+        </p>
 
-      {helpOpen && (
-        <KeyboardMap
-          commands={commands}
-          hasSelection={selected !== null}
-          onClose={() => setHelpOpen(false)}
+        {tasks.length === 0 ? (
+          <div className={styles.empty}>
+            <p className={styles.emptyTitle}>Nothing on the board yet</p>
+            <p className={styles.emptyBody}>
+              Add a task from the list and it appears here under its status.
+            </p>
+          </div>
+        ) : (
+          <Board columns={columns} controls={controls} />
+        )}
+
+        <BottomNav onActions={() => setPaletteOpen(true)} />
+
+        <ModeHint
+          mode={
+            lifted
+              ? { keys: '← →', text: 'carry the picked-up card' }
+              : selected
+                ? { keys: '← →', text: 'move between columns' }
+                : { keys: '↑ ↓', text: 'select a card' }
+          }
+          onOpenPalette={() => setPaletteOpen(true)}
+          onOpenHelp={() => setHelpOpen(true)}
         />
-      )}
 
-      {paletteOpen && (
-        <CommandPalette
-          commands={commands}
-          tasks={tasks}
-          lists={lists}
-          canSetPriority={selected !== null}
-          onSelectTask={(id) =>
-            void navigate({ to: '/t/$todoId', params: { todoId: id } })
-          }
-          onFilterList={(listId) =>
-            void navigate({ to: '/', search: { list: listId } })
-          }
-          onSetPriority={(priority) => {
-            if (selected) {
-              update.mutate({ id: selected.id, patch: { priority } })
+        {helpOpen && (
+          <KeyboardMap
+            commands={commands}
+            hasSelection={selected !== null}
+            onClose={() => setHelpOpen(false)}
+          />
+        )}
+
+        {paletteOpen && (
+          <CommandPalette
+            commands={commands}
+            tasks={tasks}
+            lists={lists}
+            canSetPriority={selected !== null}
+            onSelectTask={(id) =>
+              void navigate({ to: '/board/t/$todoId', params: { todoId: id } })
             }
-          }}
-          onCreateTask={(title) => create.mutate({ title })}
-          onClose={() => setPaletteOpen(false)}
-        />
-      )}
-    </main>
+            onFilterList={(listId) =>
+              void navigate({ to: '/', search: { list: listId } })
+            }
+            onSetPriority={(priority) => {
+              if (selected) {
+                update.mutate({ id: selected.id, patch: { priority } })
+              }
+            }}
+            onCreateTask={(title) => create.mutate({ title })}
+            onClose={() => setPaletteOpen(false)}
+          />
+        )}
+      </main>
+
+      {/* The detail slot. Empty at /board, the panel at /board/t/$id (8.4b). */}
+      <Outlet />
+    </div>
   )
 }

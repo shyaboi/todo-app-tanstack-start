@@ -1,0 +1,164 @@
+/* Spans the content column and stays put while the list scrolls under it:
+   search and filters act on what you are looking at, so they should not
+   scroll away from it. */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  /* The same gutter the list uses, so the search field starts exactly where
+     a task title starts. One token, no drift. */
+  padding: var(--space-3) var(--gutter);
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.filters {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-height);
+  padding: 0 var(--space-3);
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  font: var(--text-small);
+  font-weight: 600;
+  color: var(--secondary);
+}
+
+.filters:hover {
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+/* Never colour alone: the count says how many, aria-expanded says open. */
+.filtersActive {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--ink);
+  color: var(--surface);
+  font: var(--text-micro);
+}
+
+/* Pushed to the end, and never the item that gives way: it is already as
+   small as its own words. */
+.account {
+  margin-inline-start: auto;
+  flex-shrink: 0;
+}
+
+.active {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Each active filter is its own undo. */
+.activeChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font: var(--text-small);
+  font-weight: 500;
+  color: var(--secondary);
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activeChip:hover {
+  border-color: var(--rust-400);
+  color: var(--rust-700);
+}
+
+.panel {
+  padding-block-end: var(--space-1);
+}
+
+.hidden {
+  font: var(--text-small);
+  color: var(--secondary);
+}
+
+.inlineAction {
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--rust-700);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .filters,
+  .activeChip {
+    transition:
+      border-color var(--motion-fast) var(--ease),
+      color var(--motion-fast) var(--ease);
+  }
+}
+
+/* ── Phone: the bar wraps to two rows and the account moves under the
+   controls, so nothing is squeezed to unreadable. */
+@media (max-width: 640px) {
+  .bar {
+    padding: var(--space-2) var(--gutter);
+  }
+
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .account {
+    order: -1;
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .filters {
+    /* Just the icon and the count; the word is the first thing to go. */
+    padding: 0 var(--space-2);
+  }
+
+  /* Hidden from the eye, not from the accessible name -- display:none would
+     leave an icon button called nothing at all. */
+  .filtersLabel {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

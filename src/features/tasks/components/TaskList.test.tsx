@@ -185,3 +185,82 @@ describe('TaskList rows and the keyboard', () => {
     ).toHaveAttribute('title', 'Advance status · Space')
   })
 })
+
+/* The row's design-parity affordances (PLAN.md 8.4c): a visible pencil, and
+   the list rendered as a colour-coded chip rather than bare text. */
+describe('the row as the design draws it', () => {
+  const lists = [
+    { id: 'l1', name: 'Docs', createdAt: '2026-09-01T00:00:00.000Z' },
+    { id: 'l2', name: 'Infra', createdAt: '2026-09-01T00:00:00.000Z' },
+  ]
+
+  /* The chip reads the lists from the cache the shell already loaded, so the
+     test seeds that cache rather than mocking a second server module. */
+  function seeded({ children }: { children: ReactNode }) {
+    const queryClient = new QueryClient()
+    queryClient.setQueryData(['lists'], lists)
+    return (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    )
+  }
+
+  const withList = [
+    task({ id: 'a', title: 'write it', listId: 'l1' }),
+    task({ id: 'b', title: 'run it', listId: 'l2' }),
+    task({ id: 'c', title: 'no list' }),
+  ]
+
+  const renderRows = (c = controls()) =>
+    render(<TaskList tasks={withList} controls={c} />, { wrapper: seeded })
+
+  it('names the list on the chip, so the colour never carries it alone', () => {
+    renderRows()
+    const rows = screen.getAllByRole('listitem')
+    expect(within(rows[0]!).getByText('Docs')).toBeVisible()
+    expect(within(rows[1]!).getByText('Infra')).toBeVisible()
+    // A task in no list gets no chip at all, not an empty one.
+    expect(within(rows[2]!).queryByText(/Docs|Infra/)).toBeNull()
+  })
+
+  it('gives each list a stable accent from its position, not a random hue', () => {
+    renderRows()
+    const rows = screen.getAllByRole('listitem')
+    expect(within(rows[0]!).getByText('Docs')).toHaveAttribute(
+      'data-accent',
+      '0',
+    )
+    expect(within(rows[1]!).getByText('Infra')).toHaveAttribute(
+      'data-accent',
+      '1',
+    )
+  })
+
+  it('draws a pencil that starts the same edit as E and as the title', () => {
+    const c = controls()
+    renderRows(c)
+    const pencil = screen.getByRole('button', { name: 'Rename "write it"' })
+    // A single-letter key, so it reads the same on every platform.
+    expect(pencil).toHaveAttribute('title', 'Rename · E')
+    fireEvent.click(pencil)
+    // The same call the title button makes: one edit, three ways in.
+    expect(c.onEditingChange).toHaveBeenCalledWith('a', true)
+  })
+
+  it('disables the pencil on a row the server has not confirmed yet', () => {
+    render(
+      <TaskList
+        tasks={[task({ id: 'tmp_1', title: 'just typed' })]}
+        controls={controls()}
+      />,
+      { wrapper: seeded },
+    )
+    expect(
+      screen.getByRole('button', { name: 'Rename "just typed"' }),
+    ).toBeDisabled()
+  })
+
+  it('has no accessibility violations with chips and actions present', async () => {
+    const { container } = renderRows()
+    expect(await axe(container)).toHaveNoViolations()
+  })
+})

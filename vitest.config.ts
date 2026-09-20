@@ -45,6 +45,22 @@ export default defineConfig({
         },
       },
       {
+        /* The BUILT app, booted as the host boots it (PLAN.md 8.2). Needs
+           `npm run build` first and a MongoDB, so it is its own project and
+           out of `npm test` for the same reason integration is. */
+        resolve: { tsconfigPaths: true },
+        test: {
+          name: 'artifact',
+          environment: 'node',
+          globals: true,
+          include: ['tests/artifact/**/*.test.ts'],
+          testTimeout: 60_000,
+          hookTimeout: 90_000,
+          // One server, one port: these must not run beside each other.
+          fileParallelism: false,
+        },
+      },
+      {
         /* Requires a running MongoDB. Kept a separate project, and out of
            `npm test`, so a missing database fails loudly instead of being
            mistaken for a passing unit suite. CI gives it a throwaway database. */

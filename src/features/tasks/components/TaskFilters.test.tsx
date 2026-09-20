@@ -29,7 +29,7 @@ const { TaskFilters } = await import('./TaskFilters')
 const { listsQueryKey } = await import('~/features/lists/list.query')
 import type { TaskSearch } from '../task.search-params'
 
-function setup(search: TaskSearch = {}, hidden = 0) {
+function setup(search: TaskSearch = {}) {
   const onChange = vi.fn()
   const queryClient = new QueryClient()
   queryClient.setQueryData(listsQueryKey, LISTS)
@@ -39,7 +39,6 @@ function setup(search: TaskSearch = {}, hidden = 0) {
         search={search}
         counts={{ todo: 5, doing: 3, done: 2 }}
         total={10}
-        hidden={hidden}
         onChange={onChange}
       />
     </QueryClientProvider>,
@@ -126,22 +125,11 @@ describe('TaskFilters', () => {
     })
   })
 
-  it('explains what the status filter is hiding, and offers the way out', async () => {
-    const user = userEvent.setup()
-    const { onChange } = setup({ q: 'status', status: 'todo' }, 2)
-    expect(screen.getByText(/2 more tasks match but are hidden/)).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: 'Show all statuses' }))
-    expect(onChange).toHaveBeenCalledWith({ status: undefined })
-  })
-
-  it('says nothing about hidden tasks when there are none', () => {
-    setup({ q: 'focus', status: 'todo' }, 0)
-    expect(screen.queryByText(/hidden by the status filter/)).toBeNull()
-  })
+  /* "N more are hidden" moved to the top bar in 8.4a, where it is visible
+     without opening this panel; TopBar.test.tsx covers it. */
 
   it('has no accessibility violations', async () => {
-    const { container } = setup({ status: 'todo', due: 'week' }, 1)
+    const { container } = setup({ status: 'todo', due: 'week' })
     expect(await axe(container)).toHaveNoViolations()
   })
 })

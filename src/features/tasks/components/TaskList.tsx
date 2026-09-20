@@ -4,10 +4,11 @@ import { Button } from '~/shared/components/Button'
 import { ConfirmDialog } from '~/shared/components/ConfirmDialog'
 import { usePlatform } from '~/shared/hooks/usePlatform'
 import { useSwipe } from '~/shared/hooks/useSwipe'
+import { useEntering } from '~/shared/hooks/useEntering'
 import { displayKeys } from '~/shared/lib/keys'
 import { useQuery } from '@tanstack/react-query'
 import { listsQuery } from '~/features/lists/list.query'
-import { listName } from '~/features/lists/list.types'
+import { listAccent, listName } from '~/features/lists/list.types'
 import { isTempId, useUpdateTask } from '../task.query'
 import type { Task, TaskStatus } from '../task.types'
 import type { TaskGroup } from '../task.filters'
@@ -57,6 +58,8 @@ export function TaskList({
 function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
   const update = useUpdateTask(task.id)
   const platform = usePlatform()
+  // A row created just now arrives; the twenty already on screen do not.
+  const entering = useEntering()
   // From the cache the shell already loaded: no fetch, no prop drilling.
   const { data: lists = [] } = useQuery(listsQuery)
   /* Swipe-to-done (PLAN.md 7.3): either direction toggles done, the same
@@ -81,6 +84,8 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
 
   const className = [
     styles.row,
+    // The leading rule's colour: the design codes a row by its status.
+    styles[task.status],
     selected && styles.selected,
     task.status === 'done' && styles.done,
     creating && styles.pending,
@@ -97,6 +102,7 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
       className={className}
       tabIndex={-1}
       data-task-row={task.id}
+      data-enter={entering || undefined}
       aria-current={selected ? 'true' : undefined}
       onFocus={() => controls.onSelect(task.id)}
       {...swipe.handlers}
@@ -120,7 +126,15 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
 
       <span className={styles.meta}>
         {task.listId && (
-          <span className={styles.listName}>
+          /* A coloured chip rather than bare text: the design colour-codes
+             lists, and the accent comes from the palette rather than a hue
+             invented per list. The name is always there, so the colour is
+             never carrying the meaning on its own. */
+          <span
+            className={styles.listChip}
+            data-accent={listAccent(lists, task.listId)}
+          >
+            <span className={styles.listDot} aria-hidden="true" />
             {listName(lists, task.listId)}
           </span>
         )}
@@ -146,6 +160,30 @@ function TaskRow({ task, controls }: { task: Task; controls: RowControls }) {
         {(creating || update.isPending) && (
           <span className={styles.saving}>Saving…</span>
         )}
+
+        {/* The design draws a pencil on the row. E does the same thing, and
+            so does clicking the title -- one edit, three ways in. */}
+        <Button
+          variant="ghost"
+          size="small"
+          iconOnly
+          className={styles.rowAction}
+          disabled={creating}
+          aria-label={`Rename "${task.title}"`}
+          title={`Rename · ${displayKeys('E', platform)}`}
+          onClick={() => controls.onEditingChange(task.id, true)}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M4 20h4l10-10-4-4L4 16v4ZM14 6l4 4"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </Button>
 
         <Button
           variant="ghost"
