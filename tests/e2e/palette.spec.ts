@@ -1,7 +1,13 @@
 import { test, expect } from '@playwright/test'
 import type { Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
-import { createTask, gotoHydrated, signIn, uniqueTitle } from './helpers'
+import {
+  createTask,
+  gotoHydrated,
+  signIn,
+  uniqueTitle,
+  waitForServerAck,
+} from './helpers'
 
 /* The command palette, driven only by keys. The runner is not a Mac, so ⌘K
    is Control+K. */
@@ -138,6 +144,9 @@ test('nothing matched: Enter creates the task you typed', async ({ page }) => {
   await expect(
     page.getByRole('listitem').filter({ hasText: title }),
   ).toBeVisible()
+  // Optimistic UI: the row is on screen before the server has the task.
+  // Reloading straight away races the write; wait for the acknowledgement.
+  await waitForServerAck(page, title)
   await page.reload()
   await expect(
     page.getByRole('listitem').filter({ hasText: title }),

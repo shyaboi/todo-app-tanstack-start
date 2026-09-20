@@ -101,6 +101,27 @@
   opacity: 0.6;
 }
 
+/* The card under the pointer, mid-drag: still in its slot, faded, so the eye
+   sees where it came from until it lands. */
+.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+/* A column with a card over it says so in words, not only in colour. */
+.dropTarget {
+  background: var(--rust-50);
+  outline: 2px dashed var(--rust-600);
+  outline-offset: -2px;
+}
+
+.dropHint {
+  padding: var(--space-2) var(--space-2) 0;
+  font: var(--text-small);
+  font-weight: 600;
+  color: var(--rust-700);
+}
+
 .done .card .title {
   color: var(--meta);
   text-decoration: line-through;

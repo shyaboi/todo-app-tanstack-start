@@ -158,6 +158,30 @@ test('V switches between the views, and a bare visit remembers the last one', as
   await expect(page).toHaveURL(/status=todo/)
 })
 
+test('a card can be dragged to a column, and lands where ⇧→ would put it', async ({
+  page,
+}) => {
+  const title = uniqueTitle('board drag')
+  await boardWith(page, title)
+
+  await card(page, title).dragTo(column(page, 'Done'))
+  await expect(column(page, 'Done').getByText(title)).toBeVisible()
+  // The same announcement as the keyboard move: one implementation.
+  await expect(live(page)).toContainText('Done')
+
+  await waitForServerAck(page, title)
+  await page.reload()
+  await expect(column(page, 'Done').getByText(title)).toBeVisible()
+})
+
+test('dropping a card on its own column changes nothing', async ({ page }) => {
+  const title = uniqueTitle('board same column')
+  await boardWith(page, title)
+  await card(page, title).dragTo(column(page, 'To do'))
+  await expect(column(page, 'To do').getByText(title)).toBeVisible()
+  await expect(live(page)).toHaveText('')
+})
+
 test('the board has no accessibility violations', async ({ page }) => {
   await signIn(page)
   await gotoHydrated(page, '/board')

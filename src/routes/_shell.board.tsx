@@ -43,6 +43,8 @@ function BoardPage() {
   const [helpOpen, setHelpOpen] = useState(false)
   // What the last move did, for the live region -- the visual is not enough.
   const [announcement, setAnnouncement] = useState('')
+  // The card under the pointer, while one is being dragged.
+  const [draggingId, setDraggingId] = useState<string | null>(null)
 
   // This is now the view a bare visit should land on (D5).
   useEffect(() => {
@@ -174,11 +176,26 @@ function BoardPage() {
   const controls: BoardControls = {
     selectedId,
     liftedId,
+    draggingId,
     onSelect: (id) => setRawId(id),
     onOpen: openTask,
     onToggleLift: (task) => {
       setRawId(task.id)
       setLifted((l) => !(l && liftedId === task.id))
+    },
+    /* The pointer path (6.5). A drag selects the card and puts down anything
+       the keyboard had picked up; a drop is exactly the status change ⇧→
+       makes, through the same function, announced the same way. */
+    onDragStart: (task) => {
+      setRawId(task.id)
+      setLifted(false)
+      setDraggingId(task.id)
+    },
+    onDragEnd: () => setDraggingId(null),
+    onDrop: (taskId, status) => {
+      setDraggingId(null)
+      const task = tasks.find((t) => t.id === taskId)
+      if (task) setStatus(task, status)
     },
   }
 
