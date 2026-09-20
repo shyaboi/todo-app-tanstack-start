@@ -64,3 +64,10 @@
   color: var(--rust-700);
   padding: var(--space-2) 0;
 }
+
+.emptyActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding-block-start: var(--space-2);
+}
