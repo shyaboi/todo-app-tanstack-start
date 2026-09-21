@@ -1,0 +1,74 @@
+Copyright (c) 2026 Ian Sears. All rights reserved.
+
+This software, together with its documentation, design files and commit
+history (the "Work"), is proprietary and is made publicly readable for one
+reason only: it was submitted as a technical assessment. Publishing source
+so that it can be read is not the same as giving it away. No licence is
+granted except as expressly set out below.
+
+
+1. PERMITTED USE — EVALUATION ONLY
+
+   Permission is granted to any person to view, download, clone, build and
+   run the Work for the sole purpose of evaluating the author's technical
+   ability, including as part of a hiring, recruitment or interview process,
+   and to discuss it internally for that purpose.
+
+   That permission is granted freely and without charge. It does not expire,
+   and it does not require the author to be contacted first.
+
+
+2. RIGHTS RESERVED
+
+   All other rights are reserved. Without the author's prior written
+   permission you may not:
+
+   a. copy, reproduce, publish or republish the Work or any part of it,
+      other than as section 1 allows;
+
+   b. modify, adapt, translate or create derivative works from it;
+
+   c. distribute, sublicense, sell, rent, lease, or otherwise transfer it or
+      any right in it;
+
+   d. use it, in whole or in part, in any product, service, project or
+      codebase — commercial or non-commercial, internal or public, whether
+      or not the result is distributed;
+
+   e. use it as training data for, or to fine-tune, benchmark or evaluate,
+      any machine learning model or artificial intelligence system; or
+
+   f. remove, obscure or alter any copyright, licence or attribution notice.
+
+
+3. FORKING
+
+   GitHub's Terms of Service permit any GitHub user to view and fork a public
+   repository. Nothing in this licence overrides that, and nothing about it
+   grants any right beyond section 1. A fork is a copy you are permitted to
+   hold and read; it is not permission to use the Work under section 2.
+
+
+4. THIRD-PARTY COMPONENTS
+
+   The Work depends on third-party packages, fonts and tools that are not
+   owned by the author and are not covered by this licence. Those remain
+   subject to their own licences, and nothing here restricts, extends or
+   alters your rights in them.
+
+
+5. NO WARRANTY
+
+   THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
+   THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+   IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+   CONNECTION WITH THE WORK OR THE USE OF OR OTHER DEALINGS IN THE WORK.
+
+
+6. ANY OTHER USE
+
+   For any use beyond section 1 — including using any part of this code in
+   your own work — contact ian.shane.sears@gmail.com. The answer may well be
+   yes; the point of this licence is that it is asked.

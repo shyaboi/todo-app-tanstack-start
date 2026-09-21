@@ -297,3 +297,11 @@ Honest list, in the order they would be worth closing:
 | `npm run test:e2e`                            | Playwright, own database, own port, never reuses a server   |
 | `npm run test:integration`                    | Service layer against a real MongoDB                        |
 | `npm run test:artifact`                       | Boots the built server and interrogates it                  |
+
+---
+
+## Licence
+
+Proprietary — see [LICENSE](LICENSE). Copyright © 2026 Ian Sears, all rights reserved.
+
+The repository is public because the assessment asked for it to be, and the licence says plainly what that does and does not mean: **read it, clone it, build it and run it to evaluate the work — freely, and without asking.** Everything else, including reusing any part of it in your own project, needs a word first.
