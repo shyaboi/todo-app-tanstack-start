@@ -236,7 +236,8 @@ The finished app was attacked rather than reviewed. Everything below was reprodu
 - **NoSQL operator injection.** Eight payloads through the URL: `?q[$ne]=null`, `?list={"$gt":""}`, `?sort[$where]=1`. All neutralised, and `?q=.*` matches nothing rather than everything. Inputs are `z.strictObject`, ids are regex-checked before `new ObjectId`, `$set` is built field by field, and search text is escaped and only ever used as a value.
 - **IDOR.** Another owner's task id returns "That task is not here" on both detail slots and anonymously — indistinguishable from an id that never existed.
 - **CSRF.** A server function called from another origin is refused, asserted against the built server.
-- **Dependencies.** `npm audit`, 0 vulnerabilities.
+- **Dependencies.** `npm audit --omit=dev`: 0 vulnerabilities in anything that ships. The full audit reports two advisories, both in the build toolchain — `braces` and `node-forge`, arriving through `nitropack` — and both affecting _every_ published version, so there is no patch to move to. Neither reaches production: the deployed server's traced dependencies were checked by hand and neither package, nor anything that pulls it in, is among them.
+- **TanStack Start XSS advisory.** Vercel began refusing to build `@tanstack/react-start@1.168.56` over a published XSS. Upgraded to `1.168.60`, with `@tanstack/react-router` moved to `1.170.41` alongside it — the new Start pins that exact version, and leaving the old one would have installed two routers. The vulnerable `seroval` the audit also flagged was never the runtime copy (that is `1.6.8`, patched); it came in only through `@tanstack/react-query-devtools`, which nothing imported, so it was removed rather than upgraded.
 
 S1 and S2 have regression tests in `tests/e2e/auth.spec.ts`. The headers are gated in the artifact tier rather than in Playwright, because `vite dev` does not run through nitro and a spec against the dev server could never see them.
 
